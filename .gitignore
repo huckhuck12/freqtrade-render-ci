@@ -9,3 +9,7 @@ user_data/
 
 # OS
 .DS_Store
+
+# GitHub Actions output
+result.json
+score.json

@@ -1,0 +1,49 @@
+name: Freqtrade Backtest CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Freqtrade
+      run: |
+        python -m pip install --upgrade pip
+        pip install freqtrade
+
+    - name: Download historical data
+      run: |
+        freqtrade download-data \
+          --config config/backtest.json \
+          --timeframes 5m 15m
+
+    - name: Run backtest
+      run: |
+        freqtrade backtesting \
+          --config config/backtest.json \
+          --strategy OneFiveTrendHTF \
+          --export trades \
+          --export-filename result.json
+
+    - name: Print result summary
+      run: |
+        cat result.json
+
+    - name: Upload backtest artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: backtest-result
+        path: result.json
