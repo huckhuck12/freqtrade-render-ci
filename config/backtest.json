@@ -1,14 +1,10 @@
 {
-  "$schema": "https://freqtrade.io/schemas/config.schema.json",
   "dry_run": true,
-  "dry_run_wallet": 10000,
-  "max_open_trades": 3,
+  "strategy": "OneFiveTrendHTF",
+  "timeframe": "5m",
   "stake_currency": "USDT",
   "stake_amount": "unlimited",
-  "timeframe": "5m",
-  "startup_candle_count": 200,
-  "trading_mode": "spot",
-  "margin_mode": "isolated",
+  "tradable_balance_ratio": 1.0,
   "exchange": {
     "name": "okx",
     "key": "",
@@ -17,12 +13,7 @@
     "ccxt_config": {
       "enableRateLimit": true
     },
-    "ccxt_async_config": {
-      "enableRateLimit": true
-    },
     "pair_whitelist": [
-      "BTC/USDT",
-      "ETH/USDT",
       "SOL/USDT",
       "AVAX/USDT",
       "NEAR/USDT",
@@ -31,55 +22,30 @@
     ],
     "pair_blacklist": []
   },
-  "pairlists": [
-    {
-      "method": "StaticPairList"
-    }
-  ],
-  "order_types": {
-    "entry": "limit",
-    "exit": "market",
-    "emergency_exit": "market",
-    "force_entry": "market",
-    "force_exit": "market",
-    "stoploss": "market",
-    "stoploss_on_exchange": false
+  "entry_pricing": {
+    "price_side": "same",
+    "use_order_book": false
   },
   "exit_pricing": {
-    "price_side": "other"
+    "price_side": "other",
+    "use_order_book": false
   },
-  "order_time_in_force": {
-    "entry": "gtc",
-    "exit": "gtc"
-  },
-  "unfilledtimeout": {
-    "entry": 10,
-    "exit": 10,
-    "unit": "minutes"
-  },
-  "strategy": "OneFiveTrendHTF",
-  "stoploss": -0.10,
-  "minimal_roi": {
-    "0": 0.04,
-    "60": 0.02,
-    "120": 0
-  },
-  "use_exit_signal": true,
-  "exit_profit_only": false,
-  "ignore_roi_if_entry_signal": false,
-  "dataformat_ohlcv": "json",
-  "datadir": "user_data/data",
-  "timeframes": [
-    "5m",
-    "15m"
-  ],
-  "edge": {
-    "enabled": false
+  "telegram": {
+    "enabled": false,
+    "token": "DUMMY",
+    "chat_id": "0"
   },
   "api_server": {
-    "enabled": false
+    "enabled": false,
+    "listen_ip_address": "127.0.0.1",
+    "listen_port": 8080,
+    "username": "user",
+    "password": "pass"
   },
-  "internals": {
-    "process_throttle_secs": 5
+  "datadir": "user_data/data",
+  "dataformat_ohlcv": "json",
+  "dataformat_trades": "json",
+  "backtest": {
+    "enable_protections": false
   }
 }
