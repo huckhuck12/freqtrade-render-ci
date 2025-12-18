@@ -37,8 +37,7 @@ jobs:
       - name: Download data
         run: |
           freqtrade download-data \
-            --exchange okx \
-            --pairs BTC/USDT ETH/USDT \
+            --config config/backtest.json \
             --timeframes 5m 15m
 
       # ===== 跑回测 =====
