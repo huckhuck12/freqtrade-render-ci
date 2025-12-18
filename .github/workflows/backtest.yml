@@ -46,7 +46,7 @@ jobs:
             --config config/backtest.json \
             --strategy OneFiveTrendHTF \
             --export trades \
-            --export-filename result.json
+            --export-filename user_data/backtest_results/result.json
 
       - name: Build PR comment body
         run: |
