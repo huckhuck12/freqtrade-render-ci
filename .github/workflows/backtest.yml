@@ -1,53 +1,51 @@
-name: Freqtrade Backtest CI
+name: Freqtrade Backtest (PR)
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   backtest:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install Freqtrade
-      run: |
-        python -m pip install --upgrade pip
-        pip install freqtrade
+      - name: Install freqtrade
+        run: |
+          pip install --upgrade pip
+          pip install freqtrade
 
-    - name: Create user_data directory
-      run: |
-        mkdir -p user_data
+      - name: Show freqtrade version
+        run: freqtrade --version
 
-    - name: Download historical data
-      run: |
-        freqtrade download-data \
-          --config config/backtest.json \
-          --timeframes 5m 15m
+      - name: Cache freqtrade data
+        uses: actions/cache@v4
+        with:
+          path: user_data/data
+          key: freqtrade-okx-${{ hashFiles('config/backtest.json') }}
+          restore-keys: |
+            freqtrade-okx-
 
-    - name: Run backtest
-      run: |
-        freqtrade backtesting \
-          --config config/backtest.json \
-          --strategy OneFiveTrendHTF \
-          --export trades \
-          --export-filename result.json
+      # ===== 下载数据（只跑一次会缓存） =====
+      - name: Download data
+        run: |
+          freqtrade download-data \
+            --exchange okx \
+            --pairs BTC/USDT ETH/USDT \
+            --timeframes 5m 15m
 
-    - name: Print result summary
-      run: |
-        cat result.json
-
-    - name: Upload backtest artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: backtest-result
-        path: result.json
+      # ===== 跑回测 =====
+      - name: Run backtest
+        run: |
+          freqtrade backtesting \
+            --config config/backtest.json \
+            --strategy OneFiveTrendHTF \
+            --export trades \
+            --export-filename result.json
