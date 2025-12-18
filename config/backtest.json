@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.freqtrade.io/schema.json",
+  "extends": "base.json",
+
+  "max_open_trades": 1,
+  "starting_balance": 1000,
+
+  "dry_run_wallet": 1000,
+
+  "stoploss": -0.15,
+  "unfilledtimeout": {
+    "entry": 10,
+    "exit": 10
+  }
+}
