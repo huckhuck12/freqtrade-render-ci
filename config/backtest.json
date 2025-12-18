@@ -1,27 +1,35 @@
 {
   "dry_run": true,
-  "runmode": "backtest",
+  "dry_run_wallet": 10000,
   "strategy": "OneFiveTrendHTF",
   "strategy_path": "user_data/strategies",
   "timeframe": "5m",
   "stake_currency": "USDT",
   "stake_amount": "unlimited",
-  "tradable_balance_ratio": 1.0,
+  "max_open_trades": 5,
+  "tradable_balance_ratio": 0.99,
+  "fiat_display_currency": "USD",
   "exchange": {
     "name": "okx",
-    "key": "",
-    "secret": "",
-    "password": "",
-    "ccxt_config": {},
-    "ccxt_async_config": {},
+    "ccxt_config": {
+      "enableRateLimit": true
+    },
+    "ccxt_async_config": {
+      "enableRateLimit": true
+    },
     "pair_whitelist": [
+      "BTC/USDT",
+      "ETH/USDT",
       "SOL/USDT",
       "AVAX/USDT",
       "NEAR/USDT",
       "OP/USDT",
       "ARB/USDT"
     ],
-    "pair_blacklist": []
+    "pair_blacklist": [
+      ".*UP/USDT",
+      ".*DOWN/USDT"
+    ]
   },
   "pairlists": [
     {
@@ -36,8 +44,8 @@
   },
   "telegram": {
     "enabled": false,
-    "token": "dummy",
-    "chat_id": "dummy"
+    "token": "DUMMY",
+    "chat_id": "DUMMY"
   },
   "api_server": {
     "enabled": false,
@@ -48,8 +56,6 @@
   },
   "dataformat_ohlcv": "json",
   "dataformat_trades": "json",
-  "db_url": "sqlite:///user_data/tradesv3.sqlite",
-  "logging": {
-    "loglevel": "info"
-  }
+  "logfile": "logs/freqtrade.log",
+  "verbosity": 0
 }
