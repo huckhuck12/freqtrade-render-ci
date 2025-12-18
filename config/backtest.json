@@ -45,6 +45,9 @@
     "stoploss": "market",
     "stoploss_on_exchange": false
   },
+  "exit_pricing": {
+    "price_side": "other"
+  },
   "order_time_in_force": {
     "entry": "gtc",
     "exit": "gtc"
