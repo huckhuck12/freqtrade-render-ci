@@ -1,6 +1,8 @@
 {
   "dry_run": true,
+  "runmode": "backtest",
   "strategy": "OneFiveTrendHTF",
+  "strategy_path": "user_data/strategies",
   "timeframe": "5m",
   "stake_currency": "USDT",
   "stake_amount": "unlimited",
@@ -10,9 +12,8 @@
     "key": "",
     "secret": "",
     "password": "",
-    "ccxt_config": {
-      "enableRateLimit": true
-    },
+    "ccxt_config": {},
+    "ccxt_async_config": {},
     "pair_whitelist": [
       "SOL/USDT",
       "AVAX/USDT",
@@ -22,18 +23,21 @@
     ],
     "pair_blacklist": []
   },
+  "pairlists": [
+    {
+      "method": "StaticPairList"
+    }
+  ],
   "entry_pricing": {
-    "price_side": "same",
-    "use_order_book": false
+    "price_side": "other"
   },
   "exit_pricing": {
-    "price_side": "other",
-    "use_order_book": false
+    "price_side": "other"
   },
   "telegram": {
     "enabled": false,
-    "token": "DUMMY",
-    "chat_id": "0"
+    "token": "dummy",
+    "chat_id": "dummy"
   },
   "api_server": {
     "enabled": false,
@@ -42,10 +46,10 @@
     "username": "user",
     "password": "pass"
   },
-  "datadir": "user_data/data",
   "dataformat_ohlcv": "json",
   "dataformat_trades": "json",
-  "backtest": {
-    "enable_protections": false
+  "db_url": "sqlite:///user_data/tradesv3.sqlite",
+  "logging": {
+    "loglevel": "info"
   }
 }
