@@ -24,6 +24,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install freqtrade
 
+    - name: Create user_data directory
+      run: |
+        mkdir -p user_data
+
     - name: Download historical data
       run: |
         freqtrade download-data \
