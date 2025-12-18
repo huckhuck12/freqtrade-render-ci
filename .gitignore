@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 
 # Freqtrade
-user_data/
 *.sqlite
 *.json.result
 
