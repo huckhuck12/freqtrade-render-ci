@@ -1,6 +1,11 @@
 from freqtrade.strategy import IStrategy
 from pandas import DataFrame
-import talib.abstract as ta
+import pandas as pd
+
+# ❌ 不再使用 TA-Lib（CI 环境不稳定）
+# import talib.abstract as ta
+
+# ✅ 使用 freqtrade 自带的 qtpylib（CI 已内置）
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 
@@ -39,6 +44,10 @@ class OneFiveTrendHTF(IStrategy):
 
     # ========= HTF =========
     def informative_pairs(self):
+        # CI / Backtest 安全保护
+        if not hasattr(self, "dp") or self.dp is None:
+            return []
+
         return [
             (pair, self.informative_timeframe)
             for pair in self.dp.current_whitelist()
@@ -47,26 +56,35 @@ class OneFiveTrendHTF(IStrategy):
     # ========= 指标 =========
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
-        # --- LTF (5m) ---
-        dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
-        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
-        dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
+        if dataframe.empty:
+            return dataframe
 
-        # --- HTF (15m) ---
+        # ===== LTF (5m) =====
+        dataframe["ema20"] = qtpylib.ema(dataframe["close"], window=20)
+        dataframe["ema50"] = qtpylib.ema(dataframe["close"], window=50)
+        dataframe["adx"] = qtpylib.adx(dataframe)
+
+        # ===== HTF (15m) =====
+        if not hasattr(self, "dp") or self.dp is None:
+            return dataframe
+
         inf = self.dp.get_pair_dataframe(
             pair=metadata["pair"],
             timeframe=self.informative_timeframe
         )
 
-        inf["ema50"] = ta.EMA(inf, timeperiod=50)
-        inf["ema200"] = ta.EMA(inf, timeperiod=200)
-        inf["adx"] = ta.ADX(inf, timeperiod=14)
+        if inf is None or inf.empty:
+            return dataframe
 
+        inf["ema50"] = qtpylib.ema(inf["close"], window=50)
+        inf["ema200"] = qtpylib.ema(inf["close"], window=200)
+        inf["adx"] = qtpylib.adx(inf)
+
+        # 合并 HTF → LTF
         dataframe = dataframe.merge(
-            inf[["ema50", "ema200", "adx"]],
+            inf[["date", "ema50", "ema200", "adx"]],
             how="left",
-            left_on="date",
-            right_on="date",
+            on="date",
             suffixes=("", "_15m")
         )
 
@@ -76,15 +94,20 @@ class OneFiveTrendHTF(IStrategy):
     # ========= 进场逻辑 =========
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
+        if dataframe.empty:
+            return dataframe
+
+        dataframe["enter_long"] = 0
+
         dataframe.loc[
             (
-                # --- HTF 多头趋势 ---
+                # ===== HTF 多头趋势 =====
                 (dataframe["ema50_15m"] > dataframe["ema200_15m"]) &
                 (dataframe["adx_15m"] > 20)
 
                 &
 
-                # --- LTF 回调 ---
+                # ===== LTF 回调 =====
                 (dataframe["ema20"] > dataframe["ema50"]) &
                 (qtpylib.crossed_above(dataframe["close"], dataframe["ema20"])) &
                 (dataframe["adx"] > 20)
@@ -97,9 +120,13 @@ class OneFiveTrendHTF(IStrategy):
     # ========= 出场逻辑 =========
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
+        if dataframe.empty:
+            return dataframe
+
+        dataframe["exit_long"] = 0
+
         dataframe.loc[
             (
-                # LTF 趋势走弱
                 (qtpylib.crossed_below(dataframe["close"], dataframe["ema50"])) |
                 (dataframe["adx"] < 15)
             ),
