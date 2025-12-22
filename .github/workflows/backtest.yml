@@ -52,8 +52,8 @@ jobs:
           freqtrade backtesting \
             --config config/backtest.json \
             --strategy OneFiveTrendHTF \
-            --export backtest \
-            --export-filename user_data/backtest_results/result.json
+            --backtest-directory user_data/backtest_results \
+            --backtest-filename result.json
 
       - name: Build PR comment body
         run: |
