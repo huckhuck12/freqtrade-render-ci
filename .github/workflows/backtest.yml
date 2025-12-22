@@ -55,6 +55,39 @@ jobs:
             --backtest-directory user_data/backtest_results \
             --backtest-filename result.json
 
+            - name: Backtest quality gate
+        run: |
+          set -e
+
+          # 找到最新的 meta 结果文件
+          RESULT=$(ls -t user_data/backtest_results/*.meta.json | head -n 1)
+          echo "Using result file: $RESULT"
+
+          PROFIT=$(jq '.strategy_comparison[0].profit_total_pct' $RESULT)
+          WINRATE=$(jq '.strategy_comparison[0].winrate' $RESULT)
+          TRADES=$(jq '.strategy_comparison[0].trades' $RESULT)
+          DRAWDOWN=$(jq '.strategy_comparison[0].max_drawdown_account' $RESULT)
+
+          echo "Profit:    $PROFIT %"
+          echo "Winrate:   $WINRATE"
+          echo "Trades:    $TRADES"
+          echo "Drawdown:  $DRAWDOWN %"
+
+          FAIL=0
+
+          # ===== Gate rules =====
+          awk "BEGIN {exit !($PROFIT >= 0)}"        || FAIL=1
+          awk "BEGIN {exit !($WINRATE >= 30)}"      || FAIL=1
+          awk "BEGIN {exit !($TRADES >= 50)}"       || FAIL=1
+          awk "BEGIN {exit !($DRAWDOWN <= 15)}"     || FAIL=1
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "❌ Backtest gate failed"
+            exit 1
+          else
+            echo "✅ Backtest gate passed"
+          fi
+
       - name: Build PR comment body
         run: |
           echo "Backtest result files:"
