@@ -1,4 +1,4 @@
-from freqtrade.strategy import IStrategy
+from freqtrade.strategy import IStrategy, merge_informative_pair
 from pandas import DataFrame
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
@@ -27,21 +27,22 @@ class OneFiveTrendHTF(IStrategy):
     trailing_stop_positive_offset = 0.04
     trailing_only_offset_is_reached = True
 
-    # ===== HTF =====
     def informative_pairs(self):
-        return [(pair, self.informative_timeframe)
-                for pair in self.dp.current_whitelist()]
+        return [
+            (pair, self.informative_timeframe)
+            for pair in self.dp.current_whitelist()
+        ]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
-        # === LTF ===
+        # ===== LTF =====
         dataframe["ema20"] = ta.EMA(dataframe, 20)
         dataframe["ema50"] = ta.EMA(dataframe, 50)
         dataframe["adx"] = ta.ADX(dataframe, 14)
         dataframe["atr"] = ta.ATR(dataframe, 14)
         dataframe["atr_pct"] = dataframe["atr"] / dataframe["close"]
 
-        # === HTF ===
+        # ===== HTF =====
         inf = self.dp.get_pair_dataframe(
             metadata["pair"], self.informative_timeframe
         )
@@ -51,15 +52,15 @@ class OneFiveTrendHTF(IStrategy):
         inf["ema200"] = ta.EMA(inf, 200)
         inf["adx"] = ta.ADX(inf, 14)
 
-        dataframe = dataframe.merge(
-            inf[["ema50", "ema100", "ema200", "adx"]],
-            left_on="date",
-            right_on="date",
-            how="left",
-            suffixes=("", "_15m")
+        # ✅ 正确合并 HTF
+        dataframe = merge_informative_pair(
+            dataframe,
+            inf,
+            self.timeframe,
+            self.informative_timeframe,
+            ffill=True
         )
 
-        dataframe.ffill(inplace=True)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -81,7 +82,7 @@ class OneFiveTrendHTF(IStrategy):
 
                 &
 
-                # ===== 排除低波动震荡 =====
+                # ===== 排除震荡 =====
                 (dataframe["atr_pct"] > 0.002)
             ),
             "enter_long"
