@@ -74,16 +74,15 @@ class OneFiveTrendHTF(IStrategy):
 
                 &
 
-                # ===== LTF 回调 =====
-                (dataframe["close"] > dataframe["ema50"]) &
-                (dataframe["low"] < dataframe["ema20"]) &
-                (dataframe["close"] > dataframe["ema20"]) &
-                (dataframe["adx"] > 25)
+                # ===== LTF 趋势延续 =====
+                (dataframe["ema20"] > dataframe["ema50"]) &
+                (qtpylib.crossed_above(dataframe["close"], dataframe["ema20"])) &
+                (dataframe["adx"] > 30)
 
                 &
 
-                # ===== 排除震荡 =====
-                (dataframe["atr_pct"] > 0.002)
+                # ===== 只在有动能时进 =====
+                (dataframe["atr_pct"] > 0.0025)
             ),
             "enter_long"
         ] = 1
