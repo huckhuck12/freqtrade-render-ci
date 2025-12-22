@@ -55,7 +55,7 @@ jobs:
             --backtest-directory user_data/backtest_results \
             --backtest-filename result.json
 
-            - name: Backtest quality gate
+      - name: Backtest quality gate
         run: |
           set -e
 
