@@ -57,7 +57,12 @@ jobs:
 
       - name: Build PR comment body
         run: |
-          RESULT="user_data/backtest_results/result.json"
+          echo "Backtest result files:"
+          ls -lah user_data/backtest_results
+
+          RESULT=$(ls -t user_data/backtest_results/*.json | head -n 1)
+
+          echo "Using result file: $RESULT"
 
           PROFIT=$(jq -r '.strategy_comparison[0].profit_total_pct' "$RESULT")
           WINRATE=$(jq -r '.strategy_comparison[0].winrate' "$RESULT")
