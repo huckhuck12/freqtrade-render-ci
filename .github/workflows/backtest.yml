@@ -44,7 +44,8 @@ jobs:
         run: |
           freqtrade download-data \
             --config config/backtest.json \
-            --timeframes 1m
+            --timeframes 1m \
+            --pairs BTC/USDT ETH/USDT ETH/BTC SOL/USDT AVAX/USDT NEAR/USDT OP/USDT ARB/USDT
 
       - name: Run backtest
         run: |
@@ -78,7 +79,7 @@ jobs:
           DRAWDOWN=$(jq -r '.strategy_comparison[0].max_drawdown_account' "$RESULT")
 
           cat > comment.md <<EOF
-          🤖 **Freqtrade Backtest Result – OneFiveTrendHTF**
+          🤖 **Freqtrade Backtest Result – TriangularArbitrageOKX**
 
           - 💰 Total Profit: **${PROFIT}%**
           - 📈 Winrate: **${WINRATE}%**

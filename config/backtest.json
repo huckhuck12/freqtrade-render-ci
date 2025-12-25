@@ -20,6 +20,7 @@
     "pair_whitelist": [
       "BTC/USDT",
       "ETH/USDT",
+      "ETH/BTC",
       "SOL/USDT",
       "AVAX/USDT",
       "NEAR/USDT",
