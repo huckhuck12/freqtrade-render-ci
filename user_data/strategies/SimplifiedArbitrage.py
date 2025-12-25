@@ -6,62 +6,53 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 class SimplifiedArbitrage(IStrategy):
     """
-    Optimized trend breakout strategy with improved filtering
+    Mean reversion strategy with optimized parameters
     """
-    timeframe = "1m"  # 与配置文件保持一致
+    timeframe = "1m"
     can_short = False
     startup_candle_count = 100
     process_only_new_candles = True
 
-    # 优化的风险参数
-    stoploss = -0.01  # 保持严格止损
+    # 均值回归策略参数
+    stoploss = -0.015
     minimal_roi = {
-        "0": 0.015,  # 调整盈利目标
-        "45": 0.01,
-        "90": 0.005
+        "0": 0.01,
+        "30": 0.005,
+        "60": 0
     }
 
-    # 优化突破策略参数
-    breakout_period = 15  # 缩短突破周期
-    volume_multiplier = 1.2  # 降低成交量乘数
-    rsi_oversold = 40  # RSI超卖阈值
+    # 均值回归参数
+    ma_period = 50  # 移动平均线周期
+    std_dev = 2.0  # 标准差倍数
+    rsi_overbought = 70
+    rsi_oversold = 30
 
     def informative_pairs(self):
         return [("BTC/USDT", self.timeframe)]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 计算关键指标
-        dataframe["sma_15"] = ta.SMA(dataframe, timeperiod=15)
-        dataframe["sma_45"] = ta.SMA(dataframe, timeperiod=45)
+        # 计算移动平均线和标准差
+        dataframe["ma"] = ta.SMA(dataframe, timeperiod=self.ma_period)
+        dataframe["std"] = ta.STDDEV(dataframe, timeperiod=self.ma_period)
         
-        # RSI指标用于过滤
+        # 计算布林带
+        dataframe["upper_band"] = dataframe["ma"] + (dataframe["std"] * self.std_dev)
+        dataframe["lower_band"] = dataframe["ma"] - (dataframe["std"] * self.std_dev)
+        
+        # RSI指标
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         
-        # 计算高低点突破
-        dataframe["highest_high"] = dataframe["high"].rolling(self.breakout_period).max()
-        dataframe["lowest_low"] = dataframe["low"].rolling(self.breakout_period).min()
-        
-        # 成交量平均
-        dataframe["volume_mean"] = dataframe["volume"].rolling(20).mean()
-        
-        # 趋势判断
-        dataframe["trend_up"] = dataframe["sma_15"] > dataframe["sma_45"]
+        # 价格偏离度
+        dataframe["price_deviation"] = (dataframe["close"] - dataframe["ma"]) / dataframe["ma"]
         
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 优化突破策略入场条件
+        # 均值回归策略入场条件 - 价格低于下轨且RSI超卖
         dataframe.loc[
             (
-                # 价格突破15日高点
-                (dataframe["close"] > dataframe["highest_high"].shift(1))
-                # 成交量放大
-                & (dataframe["volume"] > dataframe["volume_mean"] * self.volume_multiplier)
-                # 上升趋势
-                & (dataframe["trend_up"])
-                # RSI不在超卖区域
-                & (dataframe["rsi"] > self.rsi_oversold)
-                # 确保有成交量
+                (dataframe["close"] < dataframe["lower_band"])
+                & (dataframe["rsi"] < self.rsi_oversold)
                 & (dataframe["volume"] > 0)
             ),
             "enter_long"
@@ -70,17 +61,12 @@ class SimplifiedArbitrage(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 优化退出条件
+        # 均值回归策略退出条件 - 价格回归均线或RSI超买
         dataframe.loc[
             (
-                # 价格跌破15日低点
-                (dataframe["close"] < dataframe["lowest_low"].shift(1))
+                (dataframe["close"] > dataframe["ma"])
                 |
-                # 价格跌破短期均线
-                (dataframe["close"] < dataframe["sma_15"])
-                |
-                # RSI超买
-                (dataframe["rsi"] > 75)
+                (dataframe["rsi"] > self.rsi_overbought)
             ),
             "exit_long"
         ] = 1
