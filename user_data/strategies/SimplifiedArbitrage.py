@@ -13,62 +13,74 @@ class SimplifiedArbitrage(IStrategy):
     startup_candle_count = 100
     process_only_new_candles = True
 
-    # 降低风险参数
-    stoploss = -0.02
+    # 优化风险参数
+    stoploss = -0.015  # 更严格的止损
     minimal_roi = {
-        "0": 0.01,
-        "30": 0.005,
-        "60": 0
+        "0": 0.008,  # 降低盈利目标
+        "20": 0.004,
+        "40": 0
     }
 
-    # 简化的参数设置
-    arbitrage_threshold = 0.001  # 进一步降低阈值到 0.1%
-    volume_filter = 0.1  # 极低的成交量过滤
+    # 优化的参数设置
+    arbitrage_threshold = 0.003  # 提高阈值到 0.3%，减少无效信号
+    volume_filter = 0.5  # 提高成交量过滤，确保流动性
+    win_rate_target = 0.4  # 胜率目标
 
     def informative_pairs(self):
         return [("BTC/USDT", self.timeframe)]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 获取BTC/USDT数据
-        try:
-            btc = self.dp.get_pair_dataframe("BTC/USDT", self.timeframe)
-            dataframe["btc_price"] = btc["close"]
-            
-            # 模拟ETH/BTC比率（使用固定值或简单计算）
-            # 假设ETH约为BTC的0.06倍
-            dataframe["eth_btc_ratio"] = 0.06
-            
-            # 计算理论ETH价格
-            dataframe["theoretical_eth"] = dataframe["btc_price"] * dataframe["eth_btc_ratio"]
-            
-            # 计算价格差异百分比
-            dataframe["price_diff_pct"] = (dataframe["theoretical_eth"] - dataframe["close"]) / dataframe["close"]
-            
-            # 添加简单的趋势指标
-            dataframe["sma_short"] = ta.SMA(dataframe, timeperiod=10)
-            dataframe["sma_long"] = ta.SMA(dataframe, timeperiod=30)
-            dataframe["trend"] = dataframe["sma_short"] > dataframe["sma_long"]
-            
-            # 成交量过滤
-            dataframe["volume_mean"] = dataframe["volume"].rolling(20).mean()
-            dataframe["volume_ok"] = dataframe["volume"] > dataframe["volume_mean"] * self.volume_filter
-            
-        except Exception as e:
-            # 如果获取数据失败，创建基础指标
-            dataframe["price_diff_pct"] = 0.0
-            dataframe["trend"] = True
-            dataframe["volume_ok"] = True
-
+        # 改进的指标计算，移除固定比率假设
+        # 使用价格动量和趋势指标替代套利逻辑
+        
+        # 添加技术指标
+        dataframe["sma_20"] = ta.SMA(dataframe, timeperiod=20)
+        dataframe["sma_50"] = ta.SMA(dataframe, timeperiod=50)
+        dataframe["ema_10"] = ta.EMA(dataframe, timeperiod=10)
+        dataframe["ema_20"] = ta.EMA(dataframe, timeperiod=20)
+        
+        # 计算RSI指标
+        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        
+        # 计算MACD指标
+        macd = ta.MACD(dataframe)
+        dataframe["macd"] = macd["macd"]
+        dataframe["macdsignal"] = macd["macdsignal"]
+        dataframe["macdhist"] = macd["macdhist"]
+        
+        # 计算ATR指标
+        dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
+        
+        # 趋势判断
+        dataframe["trend_up"] = (
+            (dataframe["ema_10"] > dataframe["ema_20"])
+            & (dataframe["sma_20"] > dataframe["sma_50"])
+        )
+        
+        # 成交量过滤
+        dataframe["volume_mean"] = dataframe["volume"].rolling(20).mean()
+        dataframe["volume_ok"] = dataframe["volume"] > dataframe["volume_mean"] * self.volume_filter
+        
+        # 价格动量
+        dataframe["price_change_pct"] = dataframe["close"].pct_change(5) * 100
+        
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
-                # 套利机会：理论价格高于实际价格
-                (dataframe["price_diff_pct"] > self.arbitrage_threshold)
+                # 趋势向上
+                (dataframe["trend_up"])
                 & (dataframe["volume_ok"])
-                & (dataframe["trend"])
                 & (dataframe["volume"] > 0)
+                # RSI在正常范围内
+                & (dataframe["rsi"] > 40)
+                & (dataframe["rsi"] < 70)
+                # MACD信号
+                & (dataframe["macd"] > dataframe["macdsignal"])
+                & (dataframe["macdhist"] > 0)
+                # 价格有正动量
+                & (dataframe["price_change_pct"] > 0)
             ),
             "enter_long"
         ] = 1
@@ -78,11 +90,17 @@ class SimplifiedArbitrage(IStrategy):
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
             (
-                # 套利机会消失
-                (dataframe["price_diff_pct"] < 0)
-                |
                 # 趋势反转
-                (dataframe["sma_short"] < dataframe["sma_long"])
+                (dataframe["ema_10"] < dataframe["ema_20"])
+                |
+                # RSI超买
+                (dataframe["rsi"] > 75)
+                |
+                # MACD信号反转
+                (dataframe["macd"] < dataframe["macdsignal"])
+                |
+                # 价格动量转为负
+                (dataframe["price_change_pct"] < -0.5)
             ),
             "exit_long"
         ] = 1
