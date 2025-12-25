@@ -45,7 +45,8 @@ jobs:
           freqtrade download-data \
             --config config/backtest.json \
             --timeframes 1m \
-            --pairs BTC/USDT ETH/USDT ETH/BTC SOL/USDT AVAX/USDT NEAR/USDT OP/USDT ARB/USDT
+            --pairs ETH/USDT BTC/USDT ETH/BTC \
+            --days 90
 
       - name: Run backtest
         run: |
@@ -54,7 +55,8 @@ jobs:
             --config config/backtest.json \
             --strategy TriangularArbitrageOKX \
             --backtest-directory user_data/backtest_results \
-            --backtest-filename result.json
+            --backtest-filename result.json \
+            --timerange 20250925-20251225
 
       - name: Build PR comment body
         run: |

@@ -18,14 +18,9 @@
       "enableRateLimit": true
     },
     "pair_whitelist": [
-      "BTC/USDT",
       "ETH/USDT",
-      "ETH/BTC",
-      "SOL/USDT",
-      "AVAX/USDT",
-      "NEAR/USDT",
-      "OP/USDT",
-      "ARB/USDT"
+      "BTC/USDT",
+      "ETH/BTC"
     ],
     "pair_blacklist": [
       ".*UP/USDT",
