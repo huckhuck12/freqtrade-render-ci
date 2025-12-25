@@ -1,20 +1,61 @@
 {
+  "dry_run": true,
+  "dry_run_wallet": 10000,
+  "strategy": "TriangularArbitrageOKX",
+  "strategy_path": "user_data/strategies",
+  "timeframe": "1m",
   "stake_currency": "USDT",
   "stake_amount": 100,
-  "max_open_trades": 2,
-
+  "max_open_trades": 5,
+  "tradable_balance_ratio": 0.99,
+  "fiat_display_currency": "USD",
   "exchange": {
     "name": "okx",
     "ccxt_config": {
       "enableRateLimit": true
     },
+    "ccxt_async_config": {
+      "enableRateLimit": true
+    },
     "pair_whitelist": [
-      "ETH/USDT",
       "BTC/USDT",
-      "ETH/BTC"
+      "ETH/USDT",
+      "SOL/USDT",
+      "AVAX/USDT",
+      "NEAR/USDT",
+      "OP/USDT",
+      "ARB/USDT"
+    ],
+    "pair_blacklist": [
+      ".*UP/USDT",
+      ".*DOWN/USDT"
     ]
   },
-
-  "timeframe": "1m",
-  "dry_run_wallet": 1000
+  "pairlists": [
+    {
+      "method": "StaticPairList"
+    }
+  ],
+  "entry_pricing": {
+    "price_side": "other"
+  },
+  "exit_pricing": {
+    "price_side": "other"
+  },
+  "telegram": {
+    "enabled": false,
+    "token": "DUMMY",
+    "chat_id": "DUMMY"
+  },
+  "api_server": {
+    "enabled": false,
+    "listen_ip_address": "127.0.0.1",
+    "listen_port": 8080,
+    "username": "user",
+    "password": "pass"
+  },
+  "dataformat_ohlcv": "json",
+  "dataformat_trades": "json",
+  "logfile": "logs/freqtrade.log",
+  "verbosity": 0
 }
