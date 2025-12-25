@@ -6,26 +6,26 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 class SimplifiedArbitrage(IStrategy):
     """
-    Mean reversion strategy with optimized parameters
+    Optimized mean reversion strategy with improved parameters
     """
     timeframe = "1m"
     can_short = False
     startup_candle_count = 100
     process_only_new_candles = True
 
-    # 均值回归策略参数
-    stoploss = -0.015
+    # 优化的风险参数
+    stoploss = -0.02  # 放宽止损，减少止损触发
     minimal_roi = {
-        "0": 0.01,
-        "30": 0.005,
-        "60": 0
+        "0": 0.008,  # 降低盈利目标，提高胜率
+        "25": 0.004,
+        "50": 0
     }
 
-    # 均值回归参数
-    ma_period = 50  # 移动平均线周期
-    std_dev = 2.0  # 标准差倍数
-    rsi_overbought = 70
-    rsi_oversold = 30
+    # 优化均值回归参数
+    ma_period = 40  # 缩短移动平均线周期，提高灵敏度
+    std_dev = 1.8  # 降低标准差倍数，增加交易机会
+    rsi_overbought = 65  # 调整超买阈值
+    rsi_oversold = 35  # 调整超卖阈值，减少极端信号
 
     def informative_pairs(self):
         return [("BTC/USDT", self.timeframe)]
@@ -48,7 +48,7 @@ class SimplifiedArbitrage(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 均值回归策略入场条件 - 价格低于下轨且RSI超卖
+        # 优化入场条件
         dataframe.loc[
             (
                 (dataframe["close"] < dataframe["lower_band"])
@@ -61,7 +61,7 @@ class SimplifiedArbitrage(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 均值回归策略退出条件 - 价格回归均线或RSI超买
+        # 优化退出条件
         dataframe.loc[
             (
                 (dataframe["close"] > dataframe["ma"])
