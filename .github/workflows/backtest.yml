@@ -53,7 +53,7 @@ jobs:
           mkdir -p user_data/backtest_results
           freqtrade backtesting \
             --config config/backtest.json \
-            --strategy TriangularArbitrageOKX \
+            --strategy SimplifiedArbitrage \
             --backtest-directory user_data/backtest_results \
             --backtest-filename result.json \
             --timerange 20251125-20251225

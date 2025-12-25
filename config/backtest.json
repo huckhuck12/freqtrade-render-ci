@@ -1,7 +1,7 @@
 {
   "dry_run": true,
   "dry_run_wallet": 10000,
-  "strategy": "TriangularArbitrageOKX",
+  "strategy": "SimplifiedArbitrage",
   "strategy_path": "user_data/strategies",
   "timeframe": "1m",
   "stake_currency": "USDT",

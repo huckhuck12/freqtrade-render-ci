@@ -10,7 +10,7 @@ freqtrade download-data \
 echo "=== Run backtesting ==="
 freqtrade backtesting \
   --config config/backtest.json \
-  --strategy TriangularArbitrageOKX \
+  --strategy SimplifiedArbitrage \
   --export trades \
   --export-filename /tmp/result.json
 
