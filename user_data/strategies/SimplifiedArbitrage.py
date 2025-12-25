@@ -6,69 +6,58 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 class SimplifiedArbitrage(IStrategy):
     """
-    Simplified trend-following strategy with optimized parameters
+    Trend breakout strategy with optimized parameters
     """
     timeframe = "1m"  # 与配置文件保持一致
     can_short = False
     startup_candle_count = 100
     process_only_new_candles = True
 
-    # 平衡的风险参数
-    stoploss = -0.015  # 适当的止损
+    # 保守的风险参数
+    stoploss = -0.01  # 严格止损
     minimal_roi = {
-        "0": 0.01,  # 合理的盈利目标
-        "30": 0.005,
-        "60": 0
+        "0": 0.02,  # 更高的盈利目标
+        "60": 0.01,
+        "120": 0.005
     }
 
-    # 降低过滤条件，允许更多交易
-    volume_filter = 0.3  # 降低成交量过滤
+    # 突破策略参数
+    breakout_period = 20  # 突破周期
+    volume_multiplier = 1.5  # 成交量乘数
 
     def informative_pairs(self):
         return [("BTC/USDT", self.timeframe)]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 简化指标计算，只保留核心指标
-        
-        # 短期趋势指标
-        dataframe["ema_10"] = ta.EMA(dataframe, timeperiod=10)
-        dataframe["ema_20"] = ta.EMA(dataframe, timeperiod=20)
+        # 计算关键指标
         dataframe["sma_20"] = ta.SMA(dataframe, timeperiod=20)
+        dataframe["sma_50"] = ta.SMA(dataframe, timeperiod=50)
         
-        # 基础RSI指标
-        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
+        # 计算ATR用于止损和突破幅度
+        dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
         
-        # 基础MACD指标
-        macd = ta.MACD(dataframe)
-        dataframe["macd"] = macd["macd"]
-        dataframe["macdsignal"] = macd["macdsignal"]
-        dataframe["macdhist"] = macd["macdhist"]
+        # 计算高低点突破
+        dataframe["highest_high"] = dataframe["high"].rolling(self.breakout_period).max()
+        dataframe["lowest_low"] = dataframe["low"].rolling(self.breakout_period).min()
         
-        # 简单趋势判断
-        dataframe["trend_up"] = (
-            (dataframe["ema_10"] > dataframe["ema_20"])
-            & (dataframe["close"] > dataframe["sma_20"])
-        )
-        
-        # 基础成交量过滤
+        # 成交量平均
         dataframe["volume_mean"] = dataframe["volume"].rolling(20).mean()
-        dataframe["volume_ok"] = dataframe["volume"] > dataframe["volume_mean"] * self.volume_filter
+        
+        # 趋势判断
+        dataframe["trend_up"] = dataframe["sma_20"] > dataframe["sma_50"]
         
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 简化入场条件，降低门槛
+        # 突破策略入场条件
         dataframe.loc[
             (
-                # 趋势向上
-                (dataframe["trend_up"])
-                # 适当的成交量
-                & (dataframe["volume_ok"])
-                # RSI在合理范围内
-                & (dataframe["rsi"] > 40)
-                & (dataframe["rsi"] < 75)
-                # MACD金叉
-                & (dataframe["macd"] > dataframe["macdsignal"])
+                # 价格突破20日高点
+                (dataframe["close"] > dataframe["highest_high"].shift(1))
+                # 同时成交量放大
+                & (dataframe["volume"] > dataframe["volume_mean"] * self.volume_multiplier)
+                # 处于上升趋势中
+                & (dataframe["trend_up"])
                 # 确保有成交量
                 & (dataframe["volume"] > 0)
             ),
@@ -78,17 +67,14 @@ class SimplifiedArbitrage(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 合理的退出条件
+        # 突破策略退出条件
         dataframe.loc[
             (
-                # 趋势反转
-                (dataframe["ema_10"] < dataframe["ema_20"])
+                # 价格跌破20日低点
+                (dataframe["close"] < dataframe["lowest_low"].shift(1))
                 |
-                # RSI超买
-                (dataframe["rsi"] > 80)
-                |
-                # MACD死叉
-                (dataframe["macd"] < dataframe["macdsignal"])
+                # 价格跌破短期均线
+                (dataframe["close"] < dataframe["sma_20"])
             ),
             "exit_long"
         ] = 1
