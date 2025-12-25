@@ -6,89 +6,70 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 class SimplifiedArbitrage(IStrategy):
     """
-    Simplified triangular arbitrage strategy - Optimized for lower risk
+    Simplified trend-following strategy with optimized parameters
     """
-    timeframe = "5m"  # 切换到5分钟周期，减少噪音
+    timeframe = "1m"  # 与配置文件保持一致
     can_short = False
-    startup_candle_count = 200
+    startup_candle_count = 100
     process_only_new_candles = True
 
-    # 更保守的风险参数
-    stoploss = -0.01  # 更严格的止损
+    # 平衡的风险参数
+    stoploss = -0.015  # 适当的止损
     minimal_roi = {
-        "0": 0.015,  # 提高盈利目标，只做高概率交易
-        "60": 0.01,
-        "120": 0.005
+        "0": 0.01,  # 合理的盈利目标
+        "30": 0.005,
+        "60": 0
     }
 
-    # 优化的参数设置
-    volume_filter = 1.0  # 更高的成交量过滤，确保足够流动性
-    volatility_threshold = 0.005  # 波动率阈值
+    # 降低过滤条件，允许更多交易
+    volume_filter = 0.3  # 降低成交量过滤
 
     def informative_pairs(self):
         return [("BTC/USDT", self.timeframe)]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 只保留最有效的指标
+        # 简化指标计算，只保留核心指标
         
-        # 长期趋势指标（更稳定）
-        dataframe["sma_50"] = ta.SMA(dataframe, timeperiod=50)
-        dataframe["sma_100"] = ta.SMA(dataframe, timeperiod=100)
+        # 短期趋势指标
+        dataframe["ema_10"] = ta.EMA(dataframe, timeperiod=10)
         dataframe["ema_20"] = ta.EMA(dataframe, timeperiod=20)
-        dataframe["ema_50"] = ta.EMA(dataframe, timeperiod=50)
+        dataframe["sma_20"] = ta.SMA(dataframe, timeperiod=20)
         
-        # RSI指标 - 更稳定的周期
-        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=21)
+        # 基础RSI指标
+        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         
-        # MACD指标 - 标准参数
-        macd = ta.MACD(dataframe, fastperiod=12, slowperiod=26, signalperiod=9)
+        # 基础MACD指标
+        macd = ta.MACD(dataframe)
         dataframe["macd"] = macd["macd"]
         dataframe["macdsignal"] = macd["macdsignal"]
         dataframe["macdhist"] = macd["macdhist"]
         
-        # ATR指标用于波动率过滤
-        dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
-        dataframe["atr_pct"] = dataframe["atr"] / dataframe["close"] * 100
-        
-        # 严格的趋势判断
-        dataframe["strong_trend_up"] = (
-            (dataframe["ema_20"] > dataframe["ema_50"])
-            & (dataframe["sma_50"] > dataframe["sma_100"])
-            & (dataframe["close"] > dataframe["sma_50"])
+        # 简单趋势判断
+        dataframe["trend_up"] = (
+            (dataframe["ema_10"] > dataframe["ema_20"])
+            & (dataframe["close"] > dataframe["sma_20"])
         )
         
-        # 成交量过滤 - 更严格
-        dataframe["volume_mean_20"] = dataframe["volume"].rolling(20).mean()
-        dataframe["volume_mean_50"] = dataframe["volume"].rolling(50).mean()
-        dataframe["high_volume"] = (
-            (dataframe["volume"] > dataframe["volume_mean_20"] * self.volume_filter)
-            & (dataframe["volume"] > dataframe["volume_mean_50"] * 0.8)
-        )
-        
-        # 波动率过滤
-        dataframe["low_volatility"] = dataframe["atr_pct"] < self.volatility_threshold
+        # 基础成交量过滤
+        dataframe["volume_mean"] = dataframe["volume"].rolling(20).mean()
+        dataframe["volume_ok"] = dataframe["volume"] > dataframe["volume_mean"] * self.volume_filter
         
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 非常严格的入场条件，只做高概率交易
+        # 简化入场条件，降低门槛
         dataframe.loc[
             (
-                # 强烈的上升趋势
-                (dataframe["strong_trend_up"])
-                # 高成交量
-                & (dataframe["high_volume"])
-                # 低波动率环境
-                & (dataframe["low_volatility"])
-                # 健康的RSI范围（避免超买）
-                & (dataframe["rsi"] > 50)
-                & (dataframe["rsi"] < 70)
-                # MACD金叉且柱状图为正
+                # 趋势向上
+                (dataframe["trend_up"])
+                # 适当的成交量
+                & (dataframe["volume_ok"])
+                # RSI在合理范围内
+                & (dataframe["rsi"] > 40)
+                & (dataframe["rsi"] < 75)
+                # MACD金叉
                 & (dataframe["macd"] > dataframe["macdsignal"])
-                & (dataframe["macdhist"] > 0)
-                # MACD线为正
-                & (dataframe["macd"] > 0)
-                # 确保有实际成交量
+                # 确保有成交量
                 & (dataframe["volume"] > 0)
             ),
             "enter_long"
@@ -97,23 +78,17 @@ class SimplifiedArbitrage(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # 严格的退出条件，保护利润
+        # 合理的退出条件
         dataframe.loc[
             (
                 # 趋势反转
-                (dataframe["ema_20"] < dataframe["ema_50"])
+                (dataframe["ema_10"] < dataframe["ema_20"])
                 |
                 # RSI超买
                 (dataframe["rsi"] > 80)
                 |
                 # MACD死叉
                 (dataframe["macd"] < dataframe["macdsignal"])
-                |
-                # MACD柱状图变负
-                (dataframe["macdhist"] < 0)
-                |
-                # 价格跌破短期均线
-                (dataframe["close"] < dataframe["ema_20"])
             ),
             "exit_long"
         ] = 1
