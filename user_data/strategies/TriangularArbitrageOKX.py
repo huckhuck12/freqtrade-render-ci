@@ -28,9 +28,12 @@ class TriangularArbitrageOKX(IStrategy):
     }
 
     # ========= OKX 调参 =========
-    triangle_threshold = 0.006  # 提高阈值到 0.6%
-    z_score_threshold = 1.5  # 提高 Z-score 阈值
-    volume_filter_ratio = 0.5  # 成交量过滤比例
+    triangle_threshold = 0.005  # 微调阈值到 0.5%
+    z_score_threshold = 1.3  # 微调 Z-score 阈值
+    volume_filter_ratio = 0.4  # 降低成交量过滤比例，允许更多交易
+    window_size = 40  # 调整移动窗口大小
+    ema_short = 20  # 短期 EMA
+    ema_long = 50  # 长期 EMA
 
     # ========= 信息对 =========
     def informative_pairs(self):
@@ -58,7 +61,7 @@ class TriangularArbitrageOKX(IStrategy):
         dataframe["triangle_dev"] = dataframe["triangle_ratio"] - 1.0
 
         # 使用移动平均绝对偏差（MAD）替代标准差，更稳健
-        window = 60
+        window = self.window_size
         mean = dataframe["triangle_dev"].rolling(window).mean()
         mad = dataframe["triangle_dev"].rolling(window).apply(lambda x: (x - x.mean()).abs().mean())
         
@@ -66,9 +69,9 @@ class TriangularArbitrageOKX(IStrategy):
         dataframe["triangle_z"] = (dataframe["triangle_dev"] - mean) / (mad + 0.0001)
         
         # 添加趋势过滤指标
-        dataframe["ema20"] = ta.EMA(dataframe, timeperiod=20)
-        dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
-        dataframe["trend_up"] = dataframe["ema20"] > dataframe["ema50"]
+        dataframe[f"ema{self.ema_short}"] = ta.EMA(dataframe, timeperiod=self.ema_short)
+        dataframe[f"ema{self.ema_long}"] = ta.EMA(dataframe, timeperiod=self.ema_long)
+        dataframe["trend_up"] = dataframe[f"ema{self.ema_short}"] > dataframe[f"ema{self.ema_long}"]
         
         # 添加成交量指标
         dataframe["volume_mean20"] = dataframe["volume"].rolling(20).mean()
@@ -105,13 +108,16 @@ class TriangularArbitrageOKX(IStrategy):
         dataframe.loc[
             (
                 # 套利机会消失
-                (dataframe["triangle_dev"] < 0.002)
+                (dataframe["triangle_dev"] < 0.0015)
                 | 
                 # Z-score 反转
-                (dataframe["triangle_z"] < 0.5)
+                (dataframe["triangle_z"] < 0.3)
                 |
                 # 趋势反转
-                (qtpylib.crossed_below(dataframe["close"], dataframe["ema20"]))
+                (qtpylib.crossed_below(dataframe["close"], dataframe[f"ema{self.ema_short}"]))
+                |
+                # 快速止损
+                (dataframe["close"] < dataframe["open"] * (1 - self.stoploss * 0.5))
             ),
             "exit_long"
         ] = 1
