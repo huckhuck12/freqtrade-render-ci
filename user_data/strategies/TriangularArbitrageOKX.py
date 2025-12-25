@@ -28,12 +28,12 @@ class TriangularArbitrageOKX(IStrategy):
     }
 
     # ========= OKX 调参 =========
-    triangle_threshold = 0.005  # 微调阈值到 0.5%
-    z_score_threshold = 1.3  # 微调 Z-score 阈值
-    volume_filter_ratio = 0.4  # 降低成交量过滤比例，允许更多交易
-    window_size = 40  # 调整移动窗口大小
-    ema_short = 20  # 短期 EMA
-    ema_long = 50  # 长期 EMA
+    triangle_threshold = 0.003  # 降低阈值到 0.3%，允许更多交易机会
+    z_score_threshold = 1.0  # 降低 Z-score 阈值
+    volume_filter_ratio = 0.3  # 进一步降低成交量过滤比例
+    window_size = 30  # 缩短移动窗口大小
+    ema_short = 15  # 缩短短期 EMA
+    ema_long = 30  # 缩短长期 EMA
 
     # ========= 信息对 =========
     def informative_pairs(self):
@@ -41,6 +41,12 @@ class TriangularArbitrageOKX(IStrategy):
             ("BTC/USDT", self.timeframe),
             ("ETH/BTC", self.timeframe),
         ]
+        
+    def custom_stake_currency(self, pair: str) -> str:
+        # 允许ETH/BTC使用BTC作为计价货币
+        if pair == "ETH/BTC":
+            return "BTC"
+        return self.stake_currency
 
     # ========= 指标 =========
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
