@@ -1,9 +1,9 @@
 {
   "dry_run": true,
   "dry_run_wallet": 10000,
-  "strategy": "OneFiveTrendHTF",
+  "strategy": "SimplifiedArbitrage",
   "strategy_path": "user_data/strategies",
-  "timeframe": "5m",
+  "timeframe": "1m",
   "stake_currency": "USDT",
   "stake_amount": 100,
   "max_open_trades": 5,
@@ -18,13 +18,9 @@
       "enableRateLimit": true
     },
     "pair_whitelist": [
-      "BTC/USDT",
       "ETH/USDT",
-      "SOL/USDT",
-      "AVAX/USDT",
-      "NEAR/USDT",
-      "OP/USDT",
-      "ARB/USDT"
+      "BTC/USDT",
+      "ETH/BTC"
     ],
     "pair_blacklist": [
       ".*UP/USDT",
