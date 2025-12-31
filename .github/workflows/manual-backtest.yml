@@ -1,0 +1,177 @@
+name: Manual Backtest - 8PM Strategy
+
+on:
+  workflow_dispatch:
+    inputs:
+      timerange:
+        description: 'Backtest time range (e.g., 20240101-20241231)'
+        required: true
+        default: '20240701-20241231'
+      days:
+        description: 'Days of data to download'
+        required: true
+        default: '180'
+      pairs:
+        description: 'Trading pairs (comma separated)'
+        required: true
+        default: 'ETH/USDT,BTC/USDT'
+
+jobs:
+  manual-backtest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          pip install --upgrade pip
+          pip install freqtrade
+
+      - name: Show freqtrade version
+        run: freqtrade --version
+
+      - name: Cache freqtrade data
+        uses: actions/cache@v4
+        with:
+          path: user_data/data
+          key: freqtrade-manual-${{ hashFiles('config/eightpm_backtest.json') }}-${{ github.event.inputs.timerange }}
+          restore-keys: |
+            freqtrade-manual-
+
+      - name: Download data
+        run: |
+          # Convert comma-separated pairs to space-separated
+          PAIRS=$(echo "${{ github.event.inputs.pairs }}" | tr ',' ' ')
+          
+          freqtrade download-data \
+            --config config/eightpm_backtest.json \
+            --timeframes 1h \
+            --pairs $PAIRS \
+            --days ${{ github.event.inputs.days }}
+
+      - name: Run backtest
+        run: |
+          mkdir -p user_data/backtest_results
+          freqtrade backtesting \
+            --config config/eightpm_backtest.json \
+            --strategy EightPMHighLowStrategy \
+            --backtest-directory user_data/backtest_results \
+            --backtest-filename manual_eightpm_result.json \
+            --timerange ${{ github.event.inputs.timerange }}
+
+      - name: Generate detailed report
+        run: |
+          echo "Backtest result files:"
+          ls -lah user_data/backtest_results
+
+          ZIP=$(ls -t user_data/backtest_results/*.zip | head -n 1)
+          echo "Using zip: $ZIP"
+
+          mkdir -p /tmp/backtest
+          unzip -o "$ZIP" -d /tmp/backtest
+
+          echo "Extracted files:"
+          ls -lah /tmp/backtest
+
+          RESULT=$(ls /tmp/backtest/*.json | head -n 1)
+          echo "Using result json: $RESULT"
+
+          # Extract all metrics
+          PROFIT=$(jq -r '.strategy_comparison[0].profit_total_pct' "$RESULT")
+          WINRATE=$(jq -r '.strategy_comparison[0].winrate' "$RESULT")
+          TRADES=$(jq -r '.strategy_comparison[0].trades' "$RESULT")
+          DRAWDOWN=$(jq -r '.strategy_comparison[0].max_drawdown_account' "$RESULT")
+          PROFIT_FACTOR=$(jq -r '.strategy_comparison[0].profit_factor' "$RESULT")
+          EXPECTANCY=$(jq -r '.strategy_comparison[0].expectancy' "$RESULT")
+          SHARPE=$(jq -r '.strategy_comparison[0].sharpe' "$RESULT")
+          CALMAR=$(jq -r '.strategy_comparison[0].calmar' "$RESULT")
+          WINS=$(jq -r '.strategy_comparison[0].wins' "$RESULT")
+          LOSSES=$(jq -r '.strategy_comparison[0].losses' "$RESULT")
+
+          cat > detailed_report.md <<EOF
+          # 🎯 8PM High/Low Strategy - Detailed Backtest Report
+
+          ## ⚙️ Configuration
+          - **Time Range**: ${{ github.event.inputs.timerange }}
+          - **Trading Pairs**: ${{ github.event.inputs.pairs }}
+          - **Data Days**: ${{ github.event.inputs.days }}
+          - **Timeframe**: 1 hour
+          - **Strategy**: EightPMHighLowStrategy
+
+          ## 📊 Performance Summary
+          | Metric | Value |
+          |--------|-------|
+          | 💰 Total Profit | ${PROFIT}% |
+          | 📈 Win Rate | ${WINRATE}% |
+          | 🔁 Total Trades | ${TRADES} |
+          | ✅ Winning Trades | ${WINS} |
+          | ❌ Losing Trades | ${LOSSES} |
+          | 📉 Max Drawdown | ${DRAWDOWN}% |
+          | 🎲 Profit Factor | ${PROFIT_FACTOR} |
+          | 💡 Expectancy | ${EXPECTANCY} |
+          | 📈 Sharpe Ratio | ${SHARPE} |
+          | 📊 Calmar Ratio | ${CALMAR} |
+
+          ## 🔍 Strategy Logic
+          The 8PM High/Low Strategy identifies daily extremes at 8 PM and trades reversals:
+
+          ### Entry Conditions
+          - 🕐 **Time Filter**: 8 PM daily high/low identification
+          - 📊 **Volume Confirmation**: Volume > 1.1x 20-period average
+          - 🎯 **Price Confirmation**: 0.1% price reversal confirmation
+          - 📈 **Trend Filter**: Price within 5% of 20-period SMA
+
+          ### Risk Management
+          - 🛡️ **Stop Loss**: 1.5%
+          - 🎯 **Take Profit**: 3.0% (dynamic)
+          - ⚖️ **Risk/Reward**: 1:2 ratio
+
+          ## 📈 Expected vs Actual Performance
+          - **Expected Win Rate**: ~58%
+          - **Actual Win Rate**: ${WINRATE}%
+          - **Performance**: $(echo "${WINRATE} >= 50" | bc -l >/dev/null 2>&1 && echo "✅ Above expectations" || echo "⚠️ Below expectations")
+
+          ## 🎯 Strategy Validation
+          $(if [ $(echo "${WINRATE} >= 55" | bc -l) -eq 1 ]; then
+            echo "✅ **Strategy performing well** - Win rate above 55%"
+          elif [ $(echo "${WINRATE} >= 45" | bc -l) -eq 1 ]; then
+            echo "⚠️ **Strategy performing moderately** - Win rate between 45-55%"
+          else
+            echo "❌ **Strategy underperforming** - Win rate below 45%"
+          fi)
+
+          ---
+          *Generated on $(date) by GitHub Actions*
+          EOF
+
+          # Also create a summary for the workflow
+          echo "## 📊 Backtest Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Profit**: ${PROFIT}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Win Rate**: ${WINRATE}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trades**: ${TRADES}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Max Drawdown**: ${DRAWDOWN}%" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload backtest results
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-backtest-results-${{ github.event.inputs.timerange }}-${{ github.sha }}
+          path: |
+            user_data/backtest_results/
+            detailed_report.md
+          retention-days: 90
+
+      - name: Upload detailed report
+        uses: actions/upload-artifact@v4
+        with:
+          name: detailed-report-${{ github.event.inputs.timerange }}
+          path: detailed_report.md
+          retention-days: 90

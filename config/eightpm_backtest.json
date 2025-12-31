@@ -1,0 +1,44 @@
+{
+  "dry_run": true,
+  "dry_run_wallet": 10000,
+  "strategy": "EightPMHighLowStrategy",
+  "strategy_path": "user_data/strategies",
+  "timeframe": "1h",
+  "stake_currency": "USDT",
+  "stake_amount": 100,
+  "max_open_trades": 3,
+  "tradable_balance_ratio": 0.99,
+  "fiat_display_currency": "USD",
+  "exchange": {
+    "name": "binance",
+    "ccxt_config": {
+      "enableRateLimit": true
+    },
+    "pair_whitelist": [
+      "ETH/USDT",
+      "BTC/USDT"
+    ],
+    "pair_blacklist": []
+  },
+  "pairlists": [
+    {
+      "method": "StaticPairList"
+    }
+  ],
+  "entry_pricing": {
+    "price_side": "same"
+  },
+  "exit_pricing": {
+    "price_side": "same"
+  },
+  "telegram": {
+    "enabled": false
+  },
+  "api_server": {
+    "enabled": false
+  },
+  "dataformat_ohlcv": "json",
+  "dataformat_trades": "json",
+  "logfile": "logs/freqtrade.log",
+  "verbosity": 2
+}
