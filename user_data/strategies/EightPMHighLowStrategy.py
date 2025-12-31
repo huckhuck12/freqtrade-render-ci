@@ -8,28 +8,30 @@ import numpy as np
 
 class EightPMHighLowStrategy(IStrategy):
     """
-    v2.6 精准优化版晚上8点高低点策略
+    v2.7 微调优化版晚上8点高低点策略
     
     策略逻辑：
     - 以晚上8点为分界线判断当日高低点
     - 8点为最高点则做空，8点为最低点则做多
     - 等待价格确认后入场
-    - 优化的止损止盈比例 (1.6% : 6.0%)
-    - 精选3个高质量币种，质量胜过数量
+    - 微调的止损止盈比例 (1.7% : 6.0%)
+    - 精选3个高质量币种，差异化参数优化
     
-    v2.6 精准优化重点 (基于最新回测结果)：
-    - 移除表现差的BTC，专注ETH+ADA+AVAX三币种
-    - 参数精调：降低止损至1.6%，提高止盈至6%，改善盈亏比
-    - 信号质量：收紧RSI条件，提高入场精准度
-    - 仓位优化：ETH增至2.0倍(90%胜率表现优异)，ADA保持2.5倍，AVAX调至1.5倍
-    - 成交量过滤：提高成交量要求至1.035，确保流动性
+    v2.7 微调优化重点 (基于v2.6回测结果)：
+    - 止损优化：1.7%止损，减少v2.6中的17笔止损
+    - ETH参数优化：放宽ETH的RSI条件，提升50%胜率
+    - 仓位微调：ETH降至1.8x，AVAX提升至1.6x
+    - 差异化策略：不同币种使用不同的入场条件
     
-    基于最新回测数据的优化决策：
-    - ETH: 90%胜率, 0.1%收益 → 增加仓位至2.0倍
-    - BTC: 45.5%胜率, -0.03%收益 → 完全移除
-    - ADA/AVAX: 配置文件已正确，但需要参数微调
+    基于v2.6回测数据的优化决策：
+    - ADA: 63.6%胜率, 0.18%收益 → 保持最优配置
+    - AVAX: 55.6%胜率, 0.1%收益, 18笔交易 → 提升仓位至1.6x
+    - ETH: 50%胜率, 0.04%收益 → 需要参数优化和仓位调整
     
-    目标：胜率提升至70%+，收益率提升至0.15%+，减少止损次数
+    v2.6 → v2.7 改进目标：
+    - 胜率：从56.4%提升至60%+
+    - 收益率：从0.31%提升至0.35%+
+    - 止损率：从43.6%降至35%以下
     """
 
     # ========= 基本设置 =========
@@ -54,29 +56,29 @@ class EightPMHighLowStrategy(IStrategy):
             return informative_pairs
         return []
 
-    # ========= 风险控制 v2.6 - 精准优化 =========
-    stoploss = -0.016  # 降低止损至1.6% (减少不必要止损)
+    # ========= 风险控制 v2.7 - 微调优化 =========
+    stoploss = -0.017  # 微调止损至1.7% (减少v2.6中的17笔止损)
     
     minimal_roi = {
-        "0": 0.06,    # 提高初始止盈至6% (改善盈亏比)
-        "15": 0.045,  # 15分钟后降低到4.5%
-        "30": 0.035,  # 30分钟后降低到3.5%
-        "60": 0.028,  # 60分钟后降低到2.8%
-        "120": 0.022, # 120分钟后降低到2.2%
-        "240": 0.018  # 240分钟后降低到1.8%
+        "0": 0.06,    # 保持初始止盈6% (v2.6表现良好)
+        "12": 0.045,  # 12分钟后降低到4.5% (更快获利)
+        "25": 0.035,  # 25分钟后降低到3.5%
+        "50": 0.028,  # 50分钟后降低到2.8%
+        "100": 0.022, # 100分钟后降低到2.2%
+        "200": 0.018  # 200分钟后降低到1.8%
     }
 
-    # ========= 策略参数 v2.6 - 精准优化 =========
-    volume_threshold = 1.035  # 提高成交量要求，确保流动性
-    confirmation_threshold = 0.0003  # 提高价格确认阈值，减少假信号
-    tolerance = 0.009  # 收紧8点极值容差，提高信号质量
-    sma_range_pct = 0.105  # 收紧均线范围，提高入场精准度
+    # ========= 策略参数 v2.7 - 微调优化 =========
+    volume_threshold = 1.03  # 微调成交量要求，平衡流动性和信号数量
+    confirmation_threshold = 0.00028  # 微调价格确认阈值
+    tolerance = 0.0095  # 微调8点极值容差
+    sma_range_pct = 0.108  # 微调均线范围
     
-    # v2.6 新增参数 - 精准信号策略
+    # v2.7 差异化参数 - 针对不同币种优化
     trend_confirmation = False  # 保持关闭4小时趋势确认
     smart_exit = True  # 启用智能止盈止损
     
-    # 专注3个精选币种：ETH(优异), ADA(最佳), AVAX(潜力)
+    # 专注3个精选币种：ADA(最佳), AVAX(活跃), ETH(需优化)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -135,17 +137,33 @@ class EightPMHighLowStrategy(IStrategy):
             (dataframe['low'] <= dataframe['daily_low'] * (1 + self.tolerance))
         )
         
-        # 基础条件 - 精准优化参数，提高信号质量
+        # 基础条件 - v2.7差异化优化，针对不同币种使用不同参数
+        pair = metadata['pair']
+        
+        # 根据币种差异化RSI条件
+        if 'ETH' in pair:
+            # ETH: 放宽RSI条件，提升50%胜率
+            rsi_long_threshold = 45
+            rsi_short_threshold = 55
+        elif 'ADA' in pair:
+            # ADA: 保持严格条件，维持63.6%胜率
+            rsi_long_threshold = 38
+            rsi_short_threshold = 62
+        else:  # AVAX
+            # AVAX: 平衡条件，保持活跃度
+            rsi_long_threshold = 42
+            rsi_short_threshold = 58
+        
         base_long_conditions = [
             dataframe['is_daily_low_at_8pm'],
             (dataframe['volume_ratio'] > self.volume_threshold),
-            (dataframe['rsi'] < 40)  # 进一步收紧RSI条件，提高精准度
+            (dataframe['rsi'] < rsi_long_threshold)
         ]
         
         base_short_conditions = [
             dataframe['is_daily_high_at_8pm'],
             (dataframe['volume_ratio'] > self.volume_threshold),
-            (dataframe['rsi'] > 60)  # 进一步收紧RSI条件，提高精准度
+            (dataframe['rsi'] > rsi_short_threshold)
         ]
         
         # v2.2 添加4小时趋势确认 (现已启用)
@@ -234,21 +252,21 @@ class EightPMHighLowStrategy(IStrategy):
                            proposed_stake: float, min_stake: float, max_stake: float,
                            leverage: float, entry_tag: str, side: str, **kwargs) -> float:
         """
-        v2.6 精准仓位管理 - 基于最新回测表现优化
+        v2.7 微调仓位管理 - 基于v2.6回测结果优化
         """
         # 基础仓位
         base_stake = proposed_stake
         
-        # 根据最新回测表现调整仓位
-        if 'ETH' in pair:
-            # ETH: 90%胜率, 0.1%收益 - 表现优异，增加仓位
-            stake_multiplier = 2.0
-        elif 'ADA' in pair:
-            # ADA: 保持最大仓位配置
+        # 根据v2.6实际表现微调仓位
+        if 'ADA' in pair:
+            # ADA: 63.6%胜率, 0.18%收益 - 保持最大仓位
             stake_multiplier = 2.5
         elif 'AVAX' in pair:
-            # AVAX: 适度增加仓位
-            stake_multiplier = 1.5
+            # AVAX: 55.6%胜率, 0.1%收益, 18笔交易 - 提升仓位
+            stake_multiplier = 1.6
+        elif 'ETH' in pair:
+            # ETH: 50%胜率, 0.04%收益 - 降低仓位，等待改善
+            stake_multiplier = 1.8
         else:
             # 其他币种 - 标准仓位
             stake_multiplier = 1.0
@@ -259,7 +277,7 @@ class EightPMHighLowStrategy(IStrategy):
                 current_trades = len([t for t in self.dp.current_whitelist() if t])
                 if current_trades < 2:
                     # 持仓少时适度增加仓位
-                    stake_multiplier *= 1.15
+                    stake_multiplier *= 1.1
             except:
                 pass
         
@@ -271,7 +289,7 @@ class EightPMHighLowStrategy(IStrategy):
     def custom_exit(self, pair: str, trade, current_time, current_rate: float,
                    current_profit: float, **kwargs) -> str:
         """
-        v2.6 优化智能出场逻辑 - 减少不必要止损，提高盈利持有
+        v2.7 优化智能出场逻辑 - 减少止损，提高持仓质量
         """
         if not self.smart_exit:
             return None
@@ -285,31 +303,31 @@ class EightPMHighLowStrategy(IStrategy):
         latest = dataframe.iloc[-1]
         
         # 基于RSI的动态出场 - 更保守的阈值
-        if trade.is_short and latest['rsi'] < 18:  # 极端超卖
+        if trade.is_short and latest['rsi'] < 15:  # 极端超卖
             return "rsi_oversold"
-        elif not trade.is_short and latest['rsi'] > 82:  # 极端超买
+        elif not trade.is_short and latest['rsi'] > 85:  # 极端超买
             return "rsi_overbought"
         
-        # 基于持仓时间的出场 - 针对不同币种差异化管理
+        # 基于持仓时间和币种的差异化出场
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
         
-        # ETH: 表现最好，给最多时间
-        if 'ETH' in pair:
-            if trade_duration > 30 and current_profit > 0.015:  # 30小时后1.5%盈利出场
+        # ADA: 表现最好，给最多时间和耐心
+        if 'ADA' in pair:
+            if trade_duration > 36 and current_profit > 0.018:  # 36小时后1.8%盈利出场
                 return "time_profit_exit"
-            if trade_duration > 60:  # 60小时强制平仓
+            if trade_duration > 72:  # 72小时强制平仓
                 return "max_time_exit"
-        # ADA: 保持原有时间管理
-        elif 'ADA' in pair:
+        # AVAX: 活跃币种，中等时间管理
+        elif 'AVAX' in pair:
+            if trade_duration > 28 and current_profit > 0.015:  # 28小时后1.5%盈利出场
+                return "time_profit_exit"
+            if trade_duration > 56:  # 56小时强制平仓
+                return "max_time_exit"
+        # ETH: 表现一般，较短时间管理
+        else:  # ETH
             if trade_duration > 24 and current_profit > 0.012:  # 24小时后1.2%盈利出场
                 return "time_profit_exit"
             if trade_duration > 48:  # 48小时强制平仓
-                return "max_time_exit"
-        # AVAX: 标准时间管理
-        else:
-            if trade_duration > 20 and current_profit > 0.01:  # 20小时后1%盈利出场
-                return "time_profit_exit"
-            if trade_duration > 40:  # 40小时强制平仓
                 return "max_time_exit"
         
         return None
