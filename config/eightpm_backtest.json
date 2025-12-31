@@ -10,8 +10,12 @@
   "tradable_balance_ratio": 0.99,
   "fiat_display_currency": "USD",
   "exchange": {
-    "name": "binance",
+    "name": "okx",
     "ccxt_config": {
+      "enableRateLimit": true,
+      "sandbox": false
+    },
+    "ccxt_async_config": {
       "enableRateLimit": true
     },
     "pair_whitelist": [
