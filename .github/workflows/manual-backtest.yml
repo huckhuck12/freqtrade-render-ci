@@ -14,7 +14,7 @@ on:
       pairs:
         description: 'Trading pairs (comma separated)'
         required: true
-        default: 'ETH/USDT:USDT,BTC/USDT:USDT'
+        default: 'ETH/USDT:USDT,BTC/USDT:USDT,SOL/USDT:USDT,ADA/USDT:USDT,MATIC/USDT:USDT'
 
 jobs:
   manual-backtest:
