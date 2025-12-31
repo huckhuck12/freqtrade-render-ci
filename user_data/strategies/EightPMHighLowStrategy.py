@@ -8,26 +8,28 @@ import numpy as np
 
 class EightPMHighLowStrategy(IStrategy):
     """
-    v2.2 优化版晚上8点高低点策略
+    v2.2 优化版晚上8点高低点策略 - BTC适度优化
     
     策略逻辑：
     - 以晚上8点为分界线判断当日高低点
     - 8点为最高点则做空，8点为最低点则做多
     - 等待价格确认后入场
     - 优化的止损止盈比例 (1.5% : 4.0%)
-    - 4小时趋势过滤：只在趋势方向一致时交易
-    - 针对BTC的专门优化
+    - 针对BTC的适度优化参数
     
-    v2.2 新增功能：
-    - 启用4小时时间框架趋势确认
-    - BTC专用参数：更严格的成交量、RSI、波动率要求
-    - BTC智能出场：更短的持仓时间和更保守的RSI阈值
-    - 差异化交易逻辑：ETH和BTC使用不同的过滤条件
+    v2.2 优化重点：
+    - 暂时关闭4小时趋势确认 (缺少4h数据)
+    - BTC适度优化：避免过滤过严导致无信号
+    - 保持ETH优秀表现的同时提升BTC胜率
+    - 智能出场：BTC使用更保守的时间和RSI阈值
     
-    优化目标：
-    - 提高BTC交易胜率 (从45.5%提升)
-    - 保持ETH优秀表现 (90%胜率)
-    - 整体胜率目标：>70%
+    参数调整：
+    - BTC成交量阈值：1.08 (适度提高)
+    - BTC RSI阈值：38/62 (适度严格)
+    - BTC波动率要求：>1% (适度降低)
+    - BTC均线范围：6% (适度放宽)
+    
+    目标：在保证信号数量的前提下提升BTC胜率
     """
 
     # ========= 基本设置 =========
@@ -69,15 +71,15 @@ class EightPMHighLowStrategy(IStrategy):
     tolerance = 0.008  # 放宽8点极值容差 (从0.005改为0.008)
     sma_range_pct = 0.08  # 放宽均线范围 (从0.05改为0.08)
     
-    # v2.2 新增参数 - 启用4小时趋势确认 + BTC特殊优化
-    trend_confirmation = True  # 启用4小时趋势确认
+    # v2.2 新增参数 - 暂时关闭4小时趋势确认，专注BTC优化
+    trend_confirmation = False  # 暂时关闭4小时趋势确认 (缺少4h数据)
     smart_exit = True  # 启用智能止盈止损
     
-    # BTC专用参数
-    btc_volume_threshold = 1.15  # BTC需要更高的成交量确认
-    btc_tolerance = 0.006  # BTC使用更严格的极值容差
-    btc_rsi_oversold = 35  # BTC RSI超卖阈值更严格
-    btc_rsi_overbought = 65  # BTC RSI超买阈值更严格
+    # BTC专用参数 - 适度优化，避免过滤过严
+    btc_volume_threshold = 1.08  # BTC成交量要求适度提高 (从1.15降至1.08)
+    btc_tolerance = 0.007  # BTC极值容差适度严格 (从0.006放宽至0.007)
+    btc_rsi_oversold = 38  # BTC RSI超卖阈值适度严格 (从35放宽至38)
+    btc_rsi_overbought = 62  # BTC RSI超买阈值适度严格 (从65收紧至62)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -158,14 +160,14 @@ class EightPMHighLowStrategy(IStrategy):
             (dataframe['rsi'] > rsi_overbought)  # 针对BTC使用更严格的RSI
         ]
         
-        # BTC额外过滤条件：添加波动率过滤
+        # BTC额外过滤条件：适度添加波动率过滤
         if is_btc:
-            # BTC需要更高的波动率才交易
-            base_long_conditions.append(dataframe['volatility'] > 0.015)  # 1.5%以上波动率
-            base_short_conditions.append(dataframe['volatility'] > 0.015)
+            # BTC需要适度的波动率才交易 (降低要求)
+            base_long_conditions.append(dataframe['volatility'] > 0.01)  # 1%以上波动率 (从1.5%降至1%)
+            base_short_conditions.append(dataframe['volatility'] > 0.01)
             
-            # BTC需要价格更接近均线
-            btc_sma_range = 0.05  # BTC使用更严格的5%范围
+            # BTC使用适度严格的均线范围
+            btc_sma_range = 0.06  # BTC使用6%范围 (从5%放宽至6%)
             base_long_conditions.append(
                 abs(dataframe['close'] - dataframe['sma_20']) / dataframe['sma_20'] < btc_sma_range
             )
@@ -211,15 +213,15 @@ class EightPMHighLowStrategy(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        入场信号 - v2.2 针对BTC优化
+        入场信号 - v2.2 针对BTC适度优化
         """
         pair_name = metadata['pair']
         is_btc = 'BTC' in pair_name
         
-        # 针对BTC使用更严格的均线过滤
+        # 针对BTC使用适度严格的均线过滤
         if is_btc:
             near_sma_condition = (
-                abs(dataframe['close'] - dataframe['sma_20']) / dataframe['sma_20'] < 0.05
+                abs(dataframe['close'] - dataframe['sma_20']) / dataframe['sma_20'] < 0.06  # 从5%放宽至6%
             )
         else:
             near_sma_condition = dataframe['near_sma']
