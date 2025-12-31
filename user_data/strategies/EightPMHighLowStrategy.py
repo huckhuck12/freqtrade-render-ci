@@ -50,20 +50,20 @@ class EightPMHighLowStrategy(IStrategy):
         """
         计算技术指标
         """
-        # 时间信息
-        dataframe['hour'] = dataframe.index.hour
-        dataframe['date'] = dataframe.index.date
+        # 时间信息 - 使用date列而不是index
+        dataframe['hour'] = pd.to_datetime(dataframe['date']).dt.hour
+        dataframe['date_only'] = pd.to_datetime(dataframe['date']).dt.date
         dataframe['is_8pm'] = (dataframe['hour'] == 20)
         
         # 每日统计
-        daily_stats = dataframe.groupby('date').agg({
+        daily_stats = dataframe.groupby('date_only').agg({
             'high': 'max',
             'low': 'min',
             'volume': 'mean'
         }).rename(columns={'high': 'daily_high', 'low': 'daily_low', 'volume': 'daily_avg_volume'})
         
         # 合并回原数据
-        dataframe = dataframe.join(daily_stats, on='date')
+        dataframe = dataframe.join(daily_stats, on='date_only')
         
         # 技术指标
         dataframe['sma_20'] = ta.SMA(dataframe, timeperiod=20)
