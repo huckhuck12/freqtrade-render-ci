@@ -158,12 +158,12 @@ class EightPMHighLowStrategy(IStrategy):
         # 使用固定止损
         return self.stoploss
     
-    def custom_sell(self, pair: str, trade, current_time, current_rate: float,
+    def custom_exit(self, pair: str, trade, current_time, current_rate: float,
                    current_profit: float, **kwargs) -> str:
         """
-        自定义卖出逻辑
+        自定义出场逻辑
         """
-        # 可以在这里添加自定义的卖出条件
-        # 比如基于时间、技术指标等的卖出逻辑
+        # 可以在这里添加自定义的出场条件
+        # 比如基于时间、技术指标等的出场逻辑
         
         return None
