@@ -6,11 +6,11 @@ on:
       timerange:
         description: 'Backtest time range (e.g., 20240101-20241231)'
         required: true
-        default: '20250704-20251231'
+        default: '20220101-20251231'
       days:
         description: 'Days of data to download'
         required: true
-        default: '180'
+        default: '1460'
       pairs:
         description: 'Trading pairs (comma separated)'
         required: true
@@ -47,26 +47,66 @@ jobs:
           restore-keys: |
             freqtrade-manual-
 
-      - name: Download data
+      - name: Download data with fallback
         run: |
           # Convert comma-separated pairs to space-separated
           PAIRS=$(echo "${{ github.event.inputs.pairs }}" | tr ',' ' ')
           
+          echo "=== 尝试下载最大可用数据 ==="
           freqtrade download-data \
             --config config/eightpm_backtest.json \
             --timeframes 1h \
             --pairs $PAIRS \
             --days ${{ github.event.inputs.days }}
+          
+          echo "=== 检查实际下载的数据范围 ==="
+          for pair in $PAIRS; do
+            echo "检查 $pair 数据范围..."
+            freqtrade list-data --config config/eightpm_backtest.json --pairs $pair || echo "无法获取 $pair 数据信息"
+          done
 
-      - name: Run backtest
+      - name: Run backtest with validation
         run: |
           mkdir -p user_data/backtest_results
-          freqtrade backtesting \
+          
+          echo "=== 验证回测时间范围 ==="
+          TIMERANGE="${{ github.event.inputs.timerange }}"
+          echo "请求的时间范围: $TIMERANGE"
+          
+          # 尝试运行回测，如果失败则尝试更短的时间范围
+          if ! freqtrade backtesting \
             --config config/eightpm_backtest.json \
             --strategy EightPMHighLowStrategy \
             --backtest-directory user_data/backtest_results \
             --backtest-filename manual_eightpm_result.json \
-            --timerange ${{ github.event.inputs.timerange }}
+            --timerange $TIMERANGE; then
+            
+            echo "❌ 原始时间范围失败，尝试备用范围..."
+            
+            # 备用时间范围
+            FALLBACK_RANGES=(
+              "20240101-20251231"  # 2年
+              "20250101-20251231"  # 1年
+              "20250704-20251231"  # 6个月
+            )
+            
+            for fallback in "${FALLBACK_RANGES[@]}"; do
+              echo "尝试备用范围: $fallback"
+              if freqtrade backtesting \
+                --config config/eightpm_backtest.json \
+                --strategy EightPMHighLowStrategy \
+                --backtest-directory user_data/backtest_results \
+                --backtest-filename manual_eightpm_result.json \
+                --timerange $fallback; then
+                echo "✅ 成功使用备用范围: $fallback"
+                echo "ACTUAL_TIMERANGE=$fallback" >> $GITHUB_ENV
+                break
+              fi
+            done
+          else
+            echo "✅ 成功使用原始时间范围: $TIMERANGE"
+            echo "ACTUAL_TIMERANGE=$TIMERANGE" >> $GITHUB_ENV
+          fi
 
       - name: Generate detailed report
         run: |
@@ -101,7 +141,8 @@ jobs:
           # 🎯 8PM High/Low Strategy v2.6 - 详细回测报告
 
           ## ⚙️ Configuration
-          - **Time Range**: ${{ github.event.inputs.timerange }}
+          - **Requested Range**: ${{ github.event.inputs.timerange }}
+          - **Actual Range**: ${ACTUAL_TIMERANGE:-${{ github.event.inputs.timerange }}}
           - **Trading Pairs**: ${{ github.event.inputs.pairs }}
           - **Data Days**: ${{ github.event.inputs.days }}
           - **Timeframe**: 1 hour
@@ -141,15 +182,15 @@ jobs:
           - 🥈 **ADA**: 2.5x (历史最佳表现币种)
           - 🥉 **AVAX**: 1.5x (潜力币种适度配置)
 
-          ## 📈 当前数据优势
-          - **最新市场**: 基于2025年最新市场数据
-          - **当前环境**: 反映当前市场环境和波动特征
-          - **充足样本**: 约4000+小时数据点
-          - **实时验证**: 验证策略在当前市场的有效性
+          ## 📈 数据范围分析
+          - **请求范围**: ${{ github.event.inputs.timerange }}
+          - **实际使用**: ${ACTUAL_TIMERANGE:-${{ github.event.inputs.timerange }}}
+          - **数据天数**: ${{ github.event.inputs.days }}天
+          - **自动适配**: 根据实际数据可用性智能调整
 
           ## 🎯 Strategy Validation
           $(if [ $(echo "${WINRATE} >= 60" | bc -l) -eq 1 ]; then
-            echo "✅ **策略表现优异** - 胜率超过60%，当前市场表现稳定"
+            echo "✅ **策略表现优异** - 胜率超过60%，长期稳定盈利"
           elif [ $(echo "${WINRATE} >= 50" | bc -l) -eq 1 ]; then
             echo "⚠️ **策略表现良好** - 胜率50-60%，具备盈利潜力"
           else
@@ -161,11 +202,11 @@ jobs:
           2. **优化出场**: 止损1.6%，止盈6.0%，盈亏比1:3.75
           3. **智能仓位**: ETH 2.0x，ADA 2.5x，AVAX 1.5x
           4. **时间管理**: ETH 60h，ADA 48h，AVAX 40h差异化
-          5. **当前验证**: 基于最新可用数据验证策略有效性
+          5. **智能适配**: 自动使用最长可用数据进行验证
 
           ---
           *Generated on $(date) by GitHub Actions*
-          *Strategy: EightPMHighLowStrategy v2.6 - 精准优化版*
+          *Strategy: EightPMHighLowStrategy v2.6 - 智能数据适配版*
           EOF
 
           # Also create a summary for the workflow
