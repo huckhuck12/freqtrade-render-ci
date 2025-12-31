@@ -4,10 +4,6 @@
 用于快速验证策略逻辑和参数
 """
 
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-
 from final_optimized_strategy import FinalOptimizedStrategy
 
 def main():
@@ -41,7 +37,7 @@ def main():
     print("=== 测试完成 ===")
     print("💡 这是基于模拟数据的测试结果")
     print("📈 实际表现可能因市场环境而异")
-    print("🔧 可以修改 final_optimized_strategy.py 中的参数进行调优")
+    print("🔧 可以修改同目录下的 final_optimized_strategy.py 中的参数进行调优")
 
 if __name__ == "__main__":
     main()

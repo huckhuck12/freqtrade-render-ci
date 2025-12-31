@@ -175,7 +175,7 @@ pip install freqtrade
    ```
 
 2. **修改参数并重新测试**
-   - 编辑 `final_optimized_strategy.py`
+   - 编辑 `scripts/local/final_optimized_strategy.py`
    - 调整止损止盈比例
    - 修改过滤条件
 

@@ -146,7 +146,7 @@ chmod +x scripts/local/*.sh
 - 减少数据天数参数
 
 **Q: 想修改策略参数**
-- 编辑 `final_optimized_strategy.py`（独立测试）
+- 编辑 `scripts/local/final_optimized_strategy.py`（独立测试）
 - 编辑 `user_data/strategies/EightPMHighLowStrategy.py`（Freqtrade）
 
 ### 获得帮助

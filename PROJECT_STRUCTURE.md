@@ -12,7 +12,7 @@ freqtrade-render-ci/
 │   ├── STRATEGY_README.md          # 策略详细说明
 │   └── PROJECT_STRUCTURE.md        # 本文件
 ├── 🎯 核心策略文件
-│   ├── final_optimized_strategy.py              # 独立策略实现（推荐）
+│   ├── scripts/local/final_optimized_strategy.py   # 独立策略实现（推荐）
 │   └── user_data/strategies/EightPMHighLowStrategy.py  # Freqtrade策略
 ├── ⚙️ 配置文件
 │   ├── config/
@@ -56,7 +56,7 @@ freqtrade-render-ci/
 
 | 文件 | 用途 | 特点 |
 |------|------|------|
-| `final_optimized_strategy.py` | 独立策略实现 | ✅ 无依赖，快速测试 |
+| `scripts/local/final_optimized_strategy.py` | 独立策略实现 | ✅ 无依赖，快速测试 |
 | `user_data/strategies/EightPMHighLowStrategy.py` | Freqtrade策略 | ✅ 生产环境使用 |
 
 ### 配置文件
@@ -98,7 +98,7 @@ README.md → .github/workflows/ → 自动化集成
 
 ## 📦 依赖关系
 
-### 独立策略 (`final_optimized_strategy.py`)
+### 独立策略 (`scripts/local/final_optimized_strategy.py`)
 ```
 pandas + numpy → 运行策略测试
 ```
@@ -116,7 +116,7 @@ ubuntu-latest + freqtrade + jq → 自动化回测
 ## 🔄 文件生命周期
 
 ### 开发阶段
-1. 编辑 `final_optimized_strategy.py`
+1. 编辑 `scripts/local/final_optimized_strategy.py`
 2. 运行 `scripts/local/test_strategy.py` 测试
 3. 同步到 `user_data/strategies/EightPMHighLowStrategy.py`
 

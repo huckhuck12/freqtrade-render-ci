@@ -32,7 +32,9 @@
     "price_side": "same"
   },
   "telegram": {
-    "enabled": false
+    "enabled": false,
+    "token": "dummy_token",
+    "chat_id": "dummy_chat_id"
   },
   "api_server": {
     "enabled": false

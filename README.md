@@ -103,7 +103,7 @@ freqtrade-render-ci/
 ├── .github/workflows/
 │   ├── backtest.yml                    # 自动回测
 │   └── manual-backtest.yml             # 手动回测
-├── final_optimized_strategy.py         # 独立策略实现
+├── final_optimized_strategy.py         # 已移动到 scripts/local/
 ├── STRATEGY_README.md                  # 详细策略说明
 └── README.md                           # 项目说明
 ```
@@ -149,7 +149,7 @@ sma_range_pct = 0.05          # 均线范围 5%
 ### 参数调优
 可以修改以下文件中的参数：
 - `user_data/strategies/EightPMHighLowStrategy.py` - Freqtrade策略
-- `final_optimized_strategy.py` - 独立策略实现
+- `scripts/local/final_optimized_strategy.py` - 独立策略实现
 
 ### 常见调优方向
 1. **调整止损止盈比例**

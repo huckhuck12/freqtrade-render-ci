@@ -15,7 +15,7 @@
 
 ### 当前生产版本
 
-**主策略文件**: `../final_optimized_strategy.py` (v5.0)
+**主策略文件**: `../scripts/local/final_optimized_strategy.py` (v5.0)
 - **胜率**: 58.10%
 - **年化收益率**: 9.42%
 - **特点**: 简化过滤+优化止盈止损
@@ -107,4 +107,4 @@ python advanced_eightpm_strategy.py
 
 ---
 
-**推荐使用**: `../final_optimized_strategy.py` 或 `../user_data/strategies/EightPMHighLowStrategy.py`
+**推荐使用**: `../scripts/local/final_optimized_strategy.py` 或 `../user_data/strategies/EightPMHighLowStrategy.py`
