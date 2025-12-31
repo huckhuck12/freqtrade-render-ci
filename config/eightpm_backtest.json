@@ -7,8 +7,8 @@
   "strategy_path": "user_data/strategies",
   "timeframe": "1h",
   "stake_currency": "USDT",
-  "stake_amount": 200,
-  "max_open_trades": 8,
+  "stake_amount": 100,
+  "max_open_trades": 12,
   "tradable_balance_ratio": 0.99,
   "fiat_display_currency": "USD",
   "exchange": {
