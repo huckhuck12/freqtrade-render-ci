@@ -7,7 +7,7 @@
   "strategy_path": "user_data/strategies",
   "timeframe": "1h",
   "stake_currency": "USDT",
-  "stake_amount": 200,
+  "stake_amount": 120,
   "max_open_trades": 8,
   "tradable_balance_ratio": 0.99,
   "fiat_display_currency": "USD",
@@ -26,8 +26,7 @@
       "AVAX/USDT:USDT",
       "SOL/USDT:USDT",
       "MATIC/USDT:USDT",
-      "DOT/USDT:USDT",
-      "LINK/USDT:USDT"
+      "BTC/USDT:USDT"
     ],
     "pair_blacklist": []
   },
