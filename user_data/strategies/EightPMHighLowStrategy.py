@@ -44,11 +44,13 @@ class EightPMHighLowStrategy(IStrategy):
         """
         定义需要的额外时间框架数据
         """
-        pairs = self.dp.current_whitelist()
-        informative_pairs = []
-        for pair in pairs:
-            informative_pairs.append((pair, '4h'))  # 添加4小时时间框架
-        return informative_pairs
+        if self.trend_confirmation:
+            pairs = self.dp.current_whitelist()
+            informative_pairs = []
+            for pair in pairs:
+                informative_pairs.append((pair, '4h'))  # 添加4小时时间框架
+            return informative_pairs
+        return []
 
     # ========= 风险控制 =========
     stoploss = -0.015  # 1.5%止损
@@ -86,15 +88,19 @@ class EightPMHighLowStrategy(IStrategy):
         dataframe['date_only'] = pd.to_datetime(dataframe['date']).dt.date
         dataframe['is_8pm'] = (dataframe['hour'] == 20)
         
-        # v2.1 多时间框架趋势确认
+        # v2.2 多时间框架趋势确认
         if self.trend_confirmation:
             # 获取4小时数据
             informative = self.dp.get_pair_dataframe(pair=metadata['pair'], timeframe='4h')
-            informative['sma_4h'] = ta.SMA(informative, timeperiod=20)
-            informative['trend_4h'] = np.where(informative['close'] > informative['sma_4h'], 1, -1)
-            
-            # 合并到1小时数据
-            dataframe = merge_informative_pair(dataframe, informative, self.timeframe, '4h', ffill=True)
+            if informative is not None and len(informative) > 0:
+                informative['sma_4h'] = ta.SMA(informative, timeperiod=20)
+                informative['trend_4h'] = np.where(informative['close'] > informative['sma_4h'], 1, -1)
+                
+                # 合并到1小时数据 - 注意列名会有后缀
+                dataframe = merge_informative_pair(dataframe, informative, self.timeframe, '4h', ffill=True)
+            else:
+                # 如果没有4小时数据，创建默认值
+                dataframe['trend_4h_4h'] = 0
         
         # 每日统计
         daily_stats = dataframe.groupby('date_only').agg({
@@ -169,8 +175,14 @@ class EightPMHighLowStrategy(IStrategy):
         
         # v2.2 添加4小时趋势确认 (现已启用)
         if self.trend_confirmation:
-            base_long_conditions.append(dataframe['trend_4h'] == 1)  # 4小时上升趋势
-            base_short_conditions.append(dataframe['trend_4h'] == -1)  # 4小时下降趋势
+            # 使用正确的列名 (merge_informative_pair会添加后缀)
+            trend_column = 'trend_4h_4h'
+            if trend_column in dataframe.columns:
+                base_long_conditions.append(dataframe[trend_column] == 1)  # 4小时上升趋势
+                base_short_conditions.append(dataframe[trend_column] == -1)  # 4小时下降趋势
+            else:
+                # 如果没有趋势数据，不添加趋势过滤
+                pass
         
         dataframe['base_long'] = np.logical_and.reduce(base_long_conditions)
         dataframe['base_short'] = np.logical_and.reduce(base_short_conditions)
