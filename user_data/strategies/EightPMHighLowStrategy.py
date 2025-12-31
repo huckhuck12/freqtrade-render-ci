@@ -8,28 +8,29 @@ import numpy as np
 
 class EightPMHighLowStrategy(IStrategy):
     """
-    v2.2 优化版晚上8点高低点策略 - BTC适度优化
+    v2.3 收益率优化版晚上8点高低点策略
     
     策略逻辑：
     - 以晚上8点为分界线判断当日高低点
     - 8点为最高点则做空，8点为最低点则做多
     - 等待价格确认后入场
-    - 优化的止损止盈比例 (1.5% : 4.0%)
-    - 针对BTC的适度优化参数
+    - 优化的止损止盈比例 (1.5% : 5.0%)
+    - 多币种交易，提高资金利用率
     
-    v2.2 优化重点：
-    - 暂时关闭4小时趋势确认 (缺少4h数据)
-    - BTC适度优化：避免过滤过严导致无信号
-    - 保持ETH优秀表现的同时提升BTC胜率
-    - 智能出场：BTC使用更保守的时间和RSI阈值
+    v2.3 收益率优化重点：
+    - 增加交易频率：放宽过滤条件，增加信号数量
+    - 提高单笔收益：优化止盈策略，提高到5%
+    - 扩大交易范围：增加SOL、ADA、MATIC等主流币
+    - 动态仓位管理：根据币种和持仓情况调整仓位
+    - 提高资金利用率：最大持仓从3个增加到5个
     
-    参数调整：
-    - BTC成交量阈值：1.08 (适度提高)
-    - BTC RSI阈值：38/62 (适度严格)
-    - BTC波动率要求：>1% (适度降低)
-    - BTC均线范围：6% (适度放宽)
+    收益率提升策略：
+    1. 交易频率 ↑：放宽容差、降低成交量要求
+    2. 单笔收益 ↑：提高止盈目标到5%
+    3. 资金利用 ↑：增加交易对和最大持仓数
+    4. 仓位优化 ↑：主流币使用1.5倍仓位
     
-    目标：在保证信号数量的前提下提升BTC胜率
+    目标：在保持高胜率的前提下，显著提升收益率
     """
 
     # ========= 基本设置 =========
@@ -58,28 +59,29 @@ class EightPMHighLowStrategy(IStrategy):
     stoploss = -0.015  # 1.5%止损
     
     minimal_roi = {
-        "0": 0.04,    # 提高初始止盈到4%
-        "30": 0.025,  # 30分钟后降低到2.5%
-        "60": 0.02,   # 1小时后降低到2%
-        "120": 0.015, # 2小时后降低到1.5%
-        "240": 0.01   # 4小时后降低到1%
+        "0": 0.05,    # 提高初始止盈到5% (从4%提高)
+        "20": 0.035,  # 20分钟后降低到3.5%
+        "40": 0.025,  # 40分钟后降低到2.5%
+        "80": 0.02,   # 80分钟后降低到2%
+        "160": 0.015, # 160分钟后降低到1.5%
+        "320": 0.01   # 320分钟后降低到1%
     }
 
-    # ========= 策略参数 v2.2 - BTC优化 + 4小时趋势确认 =========
-    volume_threshold = 1.05  # 降低成交量要求 (从1.1改为1.05)
-    confirmation_threshold = 0.0005  # 降低价格确认阈值 (从0.001改为0.0005)
-    tolerance = 0.008  # 放宽8点极值容差 (从0.005改为0.008)
-    sma_range_pct = 0.08  # 放宽均线范围 (从0.05改为0.08)
+    # ========= 策略参数 v2.3 - 提高收益率优化 =========
+    volume_threshold = 1.03  # 进一步降低成交量要求 (从1.05改为1.03)
+    confirmation_threshold = 0.0003  # 降低价格确认阈值 (从0.0005改为0.0003)
+    tolerance = 0.01  # 进一步放宽8点极值容差 (从0.008改为0.01)
+    sma_range_pct = 0.1  # 放宽均线范围 (从0.08改为0.1)
     
-    # v2.2 新增参数 - 暂时关闭4小时趋势确认，专注BTC优化
-    trend_confirmation = False  # 暂时关闭4小时趋势确认 (缺少4h数据)
+    # v2.3 新增参数 - 提高交易频率
+    trend_confirmation = False  # 保持关闭4小时趋势确认
     smart_exit = True  # 启用智能止盈止损
     
-    # BTC专用参数 - 适度优化，避免过滤过严
-    btc_volume_threshold = 1.08  # BTC成交量要求适度提高 (从1.15降至1.08)
-    btc_tolerance = 0.007  # BTC极值容差适度严格 (从0.006放宽至0.007)
-    btc_rsi_oversold = 38  # BTC RSI超卖阈值适度严格 (从35放宽至38)
-    btc_rsi_overbought = 62  # BTC RSI超买阈值适度严格 (从65收紧至62)
+    # BTC专用参数 - 进一步放宽以增加信号
+    btc_volume_threshold = 1.05  # BTC成交量要求进一步降低 (从1.08改为1.05)
+    btc_tolerance = 0.008  # BTC极值容差适度放宽 (从0.007改为0.008)
+    btc_rsi_oversold = 40  # BTC RSI超卖阈值放宽 (从38改为40)
+    btc_rsi_overbought = 60  # BTC RSI超买阈值放宽 (从62改为60)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -264,6 +266,34 @@ class EightPMHighLowStrategy(IStrategy):
         """
         # 使用固定止损
         return self.stoploss
+    
+    def custom_stake_amount(self, pair: str, current_time, current_rate: float,
+                           proposed_stake: float, min_stake: float, max_stake: float,
+                           leverage: float, entry_tag: str, side: str, **kwargs) -> float:
+        """
+        v2.3 动态仓位管理 - 提高资金利用率
+        """
+        # 基础仓位
+        base_stake = proposed_stake
+        
+        # 根据币种调整仓位
+        if 'BTC' in pair or 'ETH' in pair:
+            # 主流币使用更大仓位
+            stake_multiplier = 1.5
+        else:
+            # 山寨币使用标准仓位
+            stake_multiplier = 1.0
+        
+        # 根据当前持仓数量调整
+        current_trades = len(self.dp.current_whitelist()) if hasattr(self, 'dp') else 0
+        if current_trades < 2:
+            # 持仓少时增加仓位
+            stake_multiplier *= 1.2
+        
+        final_stake = base_stake * stake_multiplier
+        
+        # 确保在允许范围内
+        return max(min_stake, min(final_stake, max_stake))
     
     def custom_exit(self, pair: str, trade, current_time, current_rate: float,
                    current_profit: float, **kwargs) -> str:
