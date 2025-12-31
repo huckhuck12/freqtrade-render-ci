@@ -22,11 +22,14 @@ class FinalOptimizedStrategy:
         self.base_position_size = base_position_size
         self.leverage = 100
         
-        # 优化后的参数
+        # 优化后的参数 v2.0
         self.stop_loss = 0.015  # 1.5%止损
-        self.take_profit = 0.03  # 3%止盈
-        self.volume_threshold = 1.1  # 降低成交量要求
+        self.take_profit = 0.04  # 提高到4%止盈
+        self.volume_threshold = 1.05  # 进一步降低成交量要求
         self.confirmation_candles = 1  # 减少确认时间
+        self.tolerance = 0.008  # 放宽极值容差
+        self.rsi_oversold = 40  # RSI超卖阈值
+        self.rsi_overbought = 60  # RSI超买阈值
         
         self.balance = initial_balance
         self.trades = []
@@ -115,34 +118,44 @@ class FinalOptimizedStrategy:
         
         df = df.join(daily_stats, on='date')
         
-        # 简化的技术指标
+        # 优化的技术指标 v2.0
         df['sma_20'] = df['Close'].rolling(20).mean()
         df['volume_ratio'] = df['Volume'] / df['Volume'].rolling(20).mean()
         df['price_change_1h'] = df['Close'].pct_change(1)
         df['price_change_3h'] = df['Close'].pct_change(3)
         
-        # 8点极值判断
-        tolerance = 0.005  # 放宽容差到0.5%
+        # 添加RSI指标
+        def calculate_rsi(prices, period=14):
+            delta = prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            return 100 - (100 / (1 + rs))
+        
+        df['rsi'] = calculate_rsi(df['Close'])
+        
+        # 8点极值判断 - 使用优化参数
         df['is_daily_high_at_8pm'] = (
             df['is_8pm'] & 
-            (df['High'] >= df['daily_high'] * (1 - tolerance))
+            (df['High'] >= df['daily_high'] * (1 - self.tolerance))
         )
         
         df['is_daily_low_at_8pm'] = (
             df['is_8pm'] & 
-            (df['Low'] <= df['daily_low'] * (1 + tolerance))
+            (df['Low'] <= df['daily_low'] * (1 + self.tolerance))
         )
         
-        # 简化的信号生成
-        # 基础条件：8点极值 + 成交量确认
+        # 优化的信号生成 - 增加RSI过滤
         base_long = (
             df['is_daily_low_at_8pm'] &
-            (df['volume_ratio'] > self.volume_threshold)
+            (df['volume_ratio'] > self.volume_threshold) &
+            (df['rsi'] < self.rsi_oversold)  # RSI超卖
         )
         
         base_short = (
             df['is_daily_high_at_8pm'] &
-            (df['volume_ratio'] > self.volume_threshold)
+            (df['volume_ratio'] > self.volume_threshold) &
+            (df['rsi'] > self.rsi_overbought)  # RSI超买
         )
         
         # 价格确认：等待下一个小时的价格确认
@@ -150,18 +163,18 @@ class FinalOptimizedStrategy:
         df['confirmed_short'] = False
         
         for i in range(1, len(df)):
-            # 做多确认：价格开始反弹
+            # 做多确认：价格开始反弹 - 使用优化阈值
             if base_long.iloc[i-1]:
-                if df['price_change_1h'].iloc[i] > 0.001:  # 0.1%反弹确认
+                if df['price_change_1h'].iloc[i] > 0.0005:  # 降低确认阈值
                     df.iloc[i, df.columns.get_loc('confirmed_long')] = True
             
-            # 做空确认：价格开始下跌
+            # 做空确认：价格开始下跌 - 使用优化阈值
             if base_short.iloc[i-1]:
-                if df['price_change_1h'].iloc[i] < -0.001:  # 0.1%下跌确认
+                if df['price_change_1h'].iloc[i] < -0.0005:  # 降低确认阈值
                     df.iloc[i, df.columns.get_loc('confirmed_short')] = True
         
-        # 趋势过滤：只在价格接近均线时交易（减少逆势交易）
-        df['near_sma'] = abs(df['Close'] - df['sma_20']) / df['sma_20'] < 0.05  # 5%范围内
+        # 趋势过滤：放宽均线范围
+        df['near_sma'] = abs(df['Close'] - df['sma_20']) / df['sma_20'] < 0.08  # 放宽到8%范围内
         
         # 最终信号
         df['long_signal'] = df['confirmed_long'] & df['near_sma']
@@ -339,13 +352,14 @@ class FinalOptimizedStrategy:
 
 
 def main():
-    print("=== 最终优化版晚上8点高低点策略 ===")
-    print("最终优化重点：")
-    print("- 简化过滤条件，提高信号数量")
-    print("- 优化止损止盈比例 (1.5% : 3%)")
-    print("- 快速价格确认机制")
-    print("- 趋势过滤：只在价格接近均线时交易")
-    print("- 平衡的风险收益比")
+    print("=== 优化版晚上8点高低点策略 v2.0 ===")
+    print("优化重点：")
+    print("- 增加信号频率：放宽极值容差到0.8%")
+    print("- 提高收益率：止盈目标提升到4%")
+    print("- 降低门槛：成交量阈值降至1.05")
+    print("- 增强过滤：添加RSI超买超卖判断")
+    print("- 优化确认：降低价格确认阈值")
+    print("- 平衡风险收益比，保持高胜率优势")
     
     strategy = FinalOptimizedStrategy(initial_balance=10000, base_position_size=100)
     

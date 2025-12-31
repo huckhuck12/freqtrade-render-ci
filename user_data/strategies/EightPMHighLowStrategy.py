@@ -34,17 +34,18 @@ class EightPMHighLowStrategy(IStrategy):
     stoploss = -0.015  # 1.5%止损
     
     minimal_roi = {
-        "0": 0.03,  # 3%止盈
-        "60": 0.015,  # 1小时后降低到1.5%
-        "120": 0.01,  # 2小时后降低到1%
-        "240": 0.005  # 4小时后降低到0.5%
+        "0": 0.04,    # 提高初始止盈到4%
+        "30": 0.025,  # 30分钟后降低到2.5%
+        "60": 0.02,   # 1小时后降低到2%
+        "120": 0.015, # 2小时后降低到1.5%
+        "240": 0.01   # 4小时后降低到1%
     }
 
     # ========= 策略参数 =========
-    volume_threshold = 1.1  # 成交量阈值
-    confirmation_threshold = 0.001  # 0.1%价格确认阈值
-    tolerance = 0.005  # 8点极值容差0.5%
-    sma_range_pct = 0.05  # 均线范围5%
+    volume_threshold = 1.05  # 降低成交量要求 (从1.1改为1.05)
+    confirmation_threshold = 0.0005  # 降低价格确认阈值 (从0.001改为0.0005)
+    tolerance = 0.008  # 放宽8点极值容差 (从0.005改为0.008)
+    sma_range_pct = 0.08  # 放宽均线范围 (从0.05改为0.08)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -71,6 +72,13 @@ class EightPMHighLowStrategy(IStrategy):
         dataframe['volume_ratio'] = dataframe['volume'] / dataframe['volume_sma']
         dataframe['price_change_1h'] = dataframe['close'].pct_change(1)
         
+        # 添加RSI指标用于超买超卖判断
+        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+        
+        # 添加波动率指标
+        dataframe['atr'] = ta.ATR(dataframe, timeperiod=14)
+        dataframe['volatility'] = dataframe['atr'] / dataframe['close']
+        
         # 8点极值判断
         dataframe['is_daily_high_at_8pm'] = (
             dataframe['is_8pm'] & 
@@ -82,15 +90,17 @@ class EightPMHighLowStrategy(IStrategy):
             (dataframe['low'] <= dataframe['daily_low'] * (1 + self.tolerance))
         )
         
-        # 基础条件
+        # 基础条件 - 增加RSI过滤
         dataframe['base_long'] = (
             dataframe['is_daily_low_at_8pm'] &
-            (dataframe['volume_ratio'] > self.volume_threshold)
+            (dataframe['volume_ratio'] > self.volume_threshold) &
+            (dataframe['rsi'] < 40)  # RSI超卖时做多
         )
         
         dataframe['base_short'] = (
             dataframe['is_daily_high_at_8pm'] &
-            (dataframe['volume_ratio'] > self.volume_threshold)
+            (dataframe['volume_ratio'] > self.volume_threshold) &
+            (dataframe['rsi'] > 60)  # RSI超买时做空
         )
         
         # 价格确认
