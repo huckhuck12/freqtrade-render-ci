@@ -26,7 +26,6 @@
       "AVAX/USDT:USDT",
       "SOL/USDT:USDT",
       "MATIC/USDT:USDT",
-      "DOT/USDT:USDT",
       "LINK/USDT:USDT"
     ],
     "pair_blacklist": []
