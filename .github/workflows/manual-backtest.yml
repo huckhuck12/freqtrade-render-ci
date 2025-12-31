@@ -14,7 +14,7 @@ on:
       pairs:
         description: 'Trading pairs (comma separated)'
         required: true
-        default: 'ETH/USDT:USDT,ADA/USDT:USDT,AVAX/USDT:USDT,DOT/USDT:USDT,LINK/USDT:USDT'
+        default: 'ETH/USDT:USDT,ADA/USDT:USDT,AVAX/USDT:USDT'
 
 jobs:
   manual-backtest:
