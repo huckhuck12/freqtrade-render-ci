@@ -59,7 +59,7 @@ jobs:
             --strategy EightPMHighLowStrategy \
             --backtest-directory user_data/backtest_results \
             --backtest-filename eightpm_result.json \
-            --timerange 20240701-20241231
+            --timerange 20250704-20251231
 
       - name: Build PR comment body
         run: |

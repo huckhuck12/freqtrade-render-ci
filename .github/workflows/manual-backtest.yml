@@ -6,7 +6,7 @@ on:
       timerange:
         description: 'Backtest time range (e.g., 20240101-20241231)'
         required: true
-        default: '20240701-20241231'
+        default: '20250704-20251231'
       days:
         description: 'Days of data to download'
         required: true
