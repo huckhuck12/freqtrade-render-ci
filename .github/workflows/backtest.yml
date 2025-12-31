@@ -48,7 +48,7 @@ jobs:
           freqtrade download-data \
             --config config/eightpm_backtest.json \
             --timeframes 1h \
-            --pairs ETH/USDT BTC/USDT \
+            --pairs ETH/USDT:USDT BTC/USDT:USDT \
             --days 180
 
       - name: Run backtest
