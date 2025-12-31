@@ -1,14 +1,35 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
 
 # Freqtrade
+user_data/data/
+user_data/logs/
+user_data/backtest_results/
 *.sqlite
 *.json.result
 
 # OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # GitHub Actions output
 result.json
 score.json
+
+# Temporary files
+/tmp/
+*.tmp
+*.log
