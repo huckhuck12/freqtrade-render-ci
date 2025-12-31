@@ -22,7 +22,7 @@ class FinalOptimizedStrategy:
         self.base_position_size = base_position_size
         self.leverage = 100
         
-        # 优化后的参数 v2.0
+        # 优化后的参数 v2.0 - 匹配Freqtrade策略
         self.stop_loss = 0.015  # 1.5%止损
         self.take_profit = 0.04  # 提高到4%止盈
         self.volume_threshold = 1.05  # 进一步降低成交量要求
