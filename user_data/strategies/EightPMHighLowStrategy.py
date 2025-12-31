@@ -8,29 +8,30 @@ import numpy as np
 
 class EightPMHighLowStrategy(IStrategy):
     """
-    v2.3 收益率优化版晚上8点高低点策略
+    v2.4 进阶收益率优化版晚上8点高低点策略
     
     策略逻辑：
     - 以晚上8点为分界线判断当日高低点
     - 8点为最高点则做空，8点为最低点则做多
     - 等待价格确认后入场
-    - 优化的止损止盈比例 (1.5% : 5.0%)
-    - 多币种交易，提高资金利用率
+    - 优化的止损止盈比例 (2.0% : 6.0%)
+    - 专注高表现币种，移除低效币种
     
-    v2.3 收益率优化重点：
-    - 增加交易频率：放宽过滤条件，增加信号数量
-    - 提高单笔收益：优化止盈策略，提高到5%
-    - 扩大交易范围：增加SOL、ADA、MATIC等主流币
-    - 动态仓位管理：根据币种和持仓情况调整仓位
-    - 提高资金利用率：最大持仓从3个增加到5个
+    v2.4 进阶优化重点：
+    - 币种优化：移除BTC/SOL，新增AVAX/DOT/LINK
+    - 参数统一：简化逻辑，移除复杂的币种差异化
+    - 止损放宽：从1.5%放宽至2%，减少不必要止损
+    - 止盈提升：初始止盈提升至6%，更积极的盈利目标
+    - 仓位优化：ADA 2倍仓位，ETH 1.8倍仓位
     
-    收益率提升策略：
-    1. 交易频率 ↑：放宽容差、降低成交量要求
-    2. 单笔收益 ↑：提高止盈目标到5%
-    3. 资金利用 ↑：增加交易对和最大持仓数
-    4. 仓位优化 ↑：主流币使用1.5倍仓位
+    基于v2.3回测结果的针对性优化：
+    - ADA表现最佳(81.8%胜率) → 最大仓位配置
+    - ETH表现良好(70%胜率) → 较大仓位配置  
+    - BTC表现差(-0.01%收益) → 移除
+    - SOL收益低(0.02%收益) → 移除
+    - 止损过多(12笔) → 放宽止损条件
     
-    目标：在保持高胜率的前提下，显著提升收益率
+    目标：在v2.3基础上进一步提升收益率至0.4%+
     """
 
     # ========= 基本设置 =========
@@ -55,33 +56,30 @@ class EightPMHighLowStrategy(IStrategy):
             return informative_pairs
         return []
 
-    # ========= 风险控制 =========
-    stoploss = -0.015  # 1.5%止损
+    # ========= 风险控制 v2.4 - 动态止损优化 =========
+    stoploss = -0.02  # 放宽止损到2% (从1.5%放宽)
     
     minimal_roi = {
-        "0": 0.05,    # 提高初始止盈到5% (从4%提高)
-        "20": 0.035,  # 20分钟后降低到3.5%
-        "40": 0.025,  # 40分钟后降低到2.5%
-        "80": 0.02,   # 80分钟后降低到2%
-        "160": 0.015, # 160分钟后降低到1.5%
-        "320": 0.01   # 320分钟后降低到1%
+        "0": 0.06,    # 进一步提高初始止盈到6%
+        "15": 0.045,  # 15分钟后降低到4.5%
+        "30": 0.035,  # 30分钟后降低到3.5%
+        "60": 0.025,  # 1小时后降低到2.5%
+        "120": 0.02,  # 2小时后降低到2%
+        "240": 0.015  # 4小时后降低到1.5%
     }
 
-    # ========= 策略参数 v2.3 - 提高收益率优化 =========
-    volume_threshold = 1.03  # 进一步降低成交量要求 (从1.05改为1.03)
-    confirmation_threshold = 0.0003  # 降低价格确认阈值 (从0.0005改为0.0003)
-    tolerance = 0.01  # 进一步放宽8点极值容差 (从0.008改为0.01)
-    sma_range_pct = 0.1  # 放宽均线范围 (从0.08改为0.1)
+    # ========= 策略参数 v2.4 - 进阶收益率优化 =========
+    volume_threshold = 1.02  # 进一步降低成交量要求 (从1.03改为1.02)
+    confirmation_threshold = 0.0002  # 进一步降低价格确认阈值 (从0.0003改为0.0002)
+    tolerance = 0.012  # 大幅放宽8点极值容差 (从0.01改为0.012)
+    sma_range_pct = 0.12  # 大幅放宽均线范围 (从0.1改为0.12)
     
-    # v2.3 新增参数 - 提高交易频率
+    # v2.4 新增参数 - 专注高收益优化
     trend_confirmation = False  # 保持关闭4小时趋势确认
     smart_exit = True  # 启用智能止盈止损
     
-    # BTC专用参数 - 进一步放宽以增加信号
-    btc_volume_threshold = 1.05  # BTC成交量要求进一步降低 (从1.08改为1.05)
-    btc_tolerance = 0.008  # BTC极值容差适度放宽 (从0.007改为0.008)
-    btc_rsi_oversold = 40  # BTC RSI超卖阈值放宽 (从38改为40)
-    btc_rsi_overbought = 60  # BTC RSI超买阈值放宽 (从62改为60)
+    # 移除BTC专用参数，统一使用优化参数
+    # 专注于表现好的币种：ETH, ADA, AVAX, DOT, LINK
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -129,53 +127,29 @@ class EightPMHighLowStrategy(IStrategy):
         dataframe['atr'] = ta.ATR(dataframe, timeperiod=14)
         dataframe['volatility'] = dataframe['atr'] / dataframe['close']
         
-        # 8点极值判断 - 针对BTC使用不同参数
-        pair_name = metadata['pair']
-        is_btc = 'BTC' in pair_name
-        
-        current_tolerance = self.btc_tolerance if is_btc else self.tolerance
-        
+        # 8点极值判断 - 统一参数，专注高表现币种
         dataframe['is_daily_high_at_8pm'] = (
             dataframe['is_8pm'] & 
-            (dataframe['high'] >= dataframe['daily_high'] * (1 - current_tolerance))
+            (dataframe['high'] >= dataframe['daily_high'] * (1 - self.tolerance))
         )
         
         dataframe['is_daily_low_at_8pm'] = (
             dataframe['is_8pm'] & 
-            (dataframe['low'] <= dataframe['daily_low'] * (1 + current_tolerance))
+            (dataframe['low'] <= dataframe['daily_low'] * (1 + self.tolerance))
         )
         
-        # 基础条件 - 针对BTC使用不同的RSI和成交量阈值
-        current_volume_threshold = self.btc_volume_threshold if is_btc else self.volume_threshold
-        rsi_oversold = self.btc_rsi_oversold if is_btc else 40
-        rsi_overbought = self.btc_rsi_overbought if is_btc else 60
-        
+        # 基础条件 - 统一优化参数
         base_long_conditions = [
             dataframe['is_daily_low_at_8pm'],
-            (dataframe['volume_ratio'] > current_volume_threshold),
-            (dataframe['rsi'] < rsi_oversold)  # 针对BTC使用更严格的RSI
+            (dataframe['volume_ratio'] > self.volume_threshold),
+            (dataframe['rsi'] < 45)  # 放宽RSI条件
         ]
         
         base_short_conditions = [
             dataframe['is_daily_high_at_8pm'],
-            (dataframe['volume_ratio'] > current_volume_threshold),
-            (dataframe['rsi'] > rsi_overbought)  # 针对BTC使用更严格的RSI
+            (dataframe['volume_ratio'] > self.volume_threshold),
+            (dataframe['rsi'] > 55)  # 放宽RSI条件
         ]
-        
-        # BTC额外过滤条件：适度添加波动率过滤
-        if is_btc:
-            # BTC需要适度的波动率才交易 (降低要求)
-            base_long_conditions.append(dataframe['volatility'] > 0.01)  # 1%以上波动率 (从1.5%降至1%)
-            base_short_conditions.append(dataframe['volatility'] > 0.01)
-            
-            # BTC使用适度严格的均线范围
-            btc_sma_range = 0.06  # BTC使用6%范围 (从5%放宽至6%)
-            base_long_conditions.append(
-                abs(dataframe['close'] - dataframe['sma_20']) / dataframe['sma_20'] < btc_sma_range
-            )
-            base_short_conditions.append(
-                abs(dataframe['close'] - dataframe['sma_20']) / dataframe['sma_20'] < btc_sma_range
-            )
         
         # v2.2 添加4小时趋势确认 (现已启用)
         if self.trend_confirmation:
@@ -215,18 +189,10 @@ class EightPMHighLowStrategy(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        入场信号 - v2.2 针对BTC适度优化
+        入场信号 - v2.4 简化优化
         """
-        pair_name = metadata['pair']
-        is_btc = 'BTC' in pair_name
-        
-        # 针对BTC使用适度严格的均线过滤
-        if is_btc:
-            near_sma_condition = (
-                abs(dataframe['close'] - dataframe['sma_20']) / dataframe['sma_20'] < 0.06  # 从5%放宽至6%
-            )
-        else:
-            near_sma_condition = dataframe['near_sma']
+        # 统一使用放宽的均线过滤
+        near_sma_condition = dataframe['near_sma']
         
         # 做多信号
         dataframe.loc[
@@ -271,24 +237,34 @@ class EightPMHighLowStrategy(IStrategy):
                            proposed_stake: float, min_stake: float, max_stake: float,
                            leverage: float, entry_tag: str, side: str, **kwargs) -> float:
         """
-        v2.3 动态仓位管理 - 提高资金利用率
+        v2.4 优化仓位管理 - 专注高表现币种
         """
         # 基础仓位
         base_stake = proposed_stake
         
-        # 根据币种调整仓位
-        if 'BTC' in pair or 'ETH' in pair:
-            # 主流币使用更大仓位
+        # 根据币种历史表现调整仓位
+        if 'ADA' in pair:
+            # ADA表现最佳 (81.8%胜率) - 最大仓位
+            stake_multiplier = 2.0
+        elif 'ETH' in pair:
+            # ETH表现良好 (70%胜率) - 较大仓位
+            stake_multiplier = 1.8
+        elif pair in ['AVAX/USDT:USDT', 'DOT/USDT:USDT', 'LINK/USDT:USDT']:
+            # 新增币种 - 标准仓位
             stake_multiplier = 1.5
         else:
-            # 山寨币使用标准仓位
+            # 其他币种 - 标准仓位
             stake_multiplier = 1.0
         
         # 根据当前持仓数量调整
-        current_trades = len(self.dp.current_whitelist()) if hasattr(self, 'dp') else 0
-        if current_trades < 2:
-            # 持仓少时增加仓位
-            stake_multiplier *= 1.2
+        if hasattr(self, 'dp') and self.dp:
+            try:
+                current_trades = len([t for t in self.dp.current_whitelist() if t])
+                if current_trades < 3:
+                    # 持仓少时增加仓位
+                    stake_multiplier *= 1.3
+            except:
+                pass
         
         final_stake = base_stake * stake_multiplier
         
@@ -298,7 +274,7 @@ class EightPMHighLowStrategy(IStrategy):
     def custom_exit(self, pair: str, trade, current_time, current_rate: float,
                    current_profit: float, **kwargs) -> str:
         """
-        v2.2 智能出场逻辑 - 针对BTC优化
+        v2.4 简化智能出场逻辑
         """
         if not self.smart_exit:
             return None
@@ -310,36 +286,20 @@ class EightPMHighLowStrategy(IStrategy):
             
         # 获取最新数据
         latest = dataframe.iloc[-1]
-        is_btc = 'BTC' in pair
         
-        # 基于RSI的动态出场 - BTC使用不同阈值
-        if is_btc:
-            # BTC使用更保守的RSI出场阈值
-            if trade.is_short and latest['rsi'] < 30:
-                return "rsi_oversold"
-            elif not trade.is_short and latest['rsi'] > 70:
-                return "rsi_overbought"
-        else:
-            # ETH使用原有阈值
-            if trade.is_short and latest['rsi'] < 25:
-                return "rsi_oversold"
-            elif not trade.is_short and latest['rsi'] > 75:
-                return "rsi_overbought"
+        # 基于RSI的动态出场 - 统一阈值
+        if trade.is_short and latest['rsi'] < 25:
+            return "rsi_oversold"
+        elif not trade.is_short and latest['rsi'] > 75:
+            return "rsi_overbought"
         
-        # 基于持仓时间的出场 - BTC使用更短的持仓时间
+        # 基于持仓时间的出场 - 统一逻辑
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
         
-        if is_btc:
-            # BTC更快出场
-            if trade_duration > 18 and current_profit > 0.003:  # 18小时后0.3%盈利就出场
-                return "time_profit_exit"
-            if trade_duration > 36:  # 36小时强制平仓
-                return "max_time_exit"
-        else:
-            # ETH保持原有逻辑
-            if trade_duration > 24 and current_profit > 0.005:
-                return "time_profit_exit"
-            if trade_duration > 48:
-                return "max_time_exit"
+        # 统一时间管理
+        if trade_duration > 20 and current_profit > 0.008:  # 20小时后0.8%盈利就出场
+            return "time_profit_exit"
+        if trade_duration > 40:  # 40小时强制平仓
+            return "max_time_exit"
         
         return None
